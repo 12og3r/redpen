@@ -98,46 +98,64 @@ To avoid burning model calls on inputs that aren't natural-language prose:
               UserPromptSubmit hook fires
                        │
                        ▼
-        ┌─────────────────────────────┐
-        │ Strip /cmd token if present │
-        │ Skip empty / shell prefixes │
-        └─────────┬───────────────────┘
+        ┌─────────────────────────────────────────┐
+        │ Strip /cmd token if present             │
+        │ Skip empty / shell / pure-slash prompts │
+        └─────────┬───────────────────────────────┘
                   ▼
-   Spawn `claude -p` from $TMPDIR with:
+   Spawn `claude -p` from $TMPDIR with the
+   minimal-startup flag stack:
    • --system-prompt = coach instructions
-   • --model = your configured model
-   • LANGUAGE_TUTOR_ACTIVE=1 (recursion guard)
+   • --setting-sources ""        no user/proj/local settings
+   • --strict-mcp-config         skip default MCP config
+   • --mcp-config '{...}'        empty MCP config
+   • --no-session-persistence    no transcript .jsonl
+   • </dev/null                  skip 3s stdin wait
+   + CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+   + CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
+   + CLAUDE_CODE_DISABLE_CLAUDE_MDS=1
+   + CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1
+   + LANGUAGE_TUTOR_ACTIVE=1  (recursion guard)
                   │
                   ▼
         Receive "[NN] <rewrite>"
-                  │
-                  ▼
-   Delete the headless session transcript
                   │
                   ▼
    Emit JSON {"systemMessage": "\n[NN] <rewrite>"}
                   │
                   ▼
    Claude Code displays it inline to you;
-   the parent conversation context is unchanged.
+   parent conversation context is unchanged.
 ```
 
 Key design choices:
 
+- **Synchronous on purpose.** An earlier iteration tried async (UserPromptSubmit
+  forks a detached worker → Stop hook drains a queue file when Claude finishes
+  responding). It worked but the score appeared in unpredictable positions —
+  far below the original prompt, sometimes interleaved with tool output.
+  Reverting to a blocking call keeps the score pinned directly under your
+  prompt where you can compare side-by-side.
 - **`--system-prompt` replaces** the default Claude Code system prompt so the
   coach instructions aren't diluted.
+- The minimal-startup flag stack + env vars cut `claude -p` overhead roughly
+  in half on the OAuth/Pro auth path (none of these flags require an API key
+  — `--bare` would, but it'd break for subscription users). The single
+  biggest win is `</dev/null` redirecting stdin, which kills a hard-coded
+  3-second wait inside `claude -p`.
 - The headless call runs from `$TMPDIR` / `/tmp` / `$HOME` (first that exists)
   to escape project-level `CLAUDE.md` and auto-loaded skills (e.g.
   `superpowers:systematic-debugging` would otherwise hijack "fix the bug"
   prompts).
-- Each call uses a fresh UUID `--session-id`; the resulting transcript file
-  under `~/.claude/projects/` is deleted immediately after the call so they
-  don't accumulate.
+- `--no-session-persistence` means no `.jsonl` transcript ever gets written,
+  so we don't need `--session-id` tracking or a cleanup pass.
 
 ## Limitations
 
-- Adds ~1–3 seconds of latency before your prompt reaches the model (Haiku
-  round-trip).
+- Adds ~6–10s of latency before your prompt reaches the model (median ~8s
+  on the OAuth/Pro auth path; was ~12s before optimisations). On
+  `ANTHROPIC_API_KEY` auth, swapping in `--bare` would drop this to ~1s,
+  but that path is disabled here so subscription users still work.
 - Costs a Haiku call per prompt (~$0.0001 each at current pricing).
 - Spanish vs English vs other Latin-script languages are not character-level
   distinguishable; for Spanish mode, the model decides Spanish-ness from

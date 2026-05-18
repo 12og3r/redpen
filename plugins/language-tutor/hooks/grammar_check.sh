@@ -1,46 +1,26 @@
 #!/usr/bin/env bash
-# UserPromptSubmit hook: rewrite the user's English into a polished version
-# via a headless `claude -p` call, and display ONLY the rewritten text.
+# UserPromptSubmit hook: score and rewrite the user's prompt in their target
+# language via a synchronous headless `claude -p` call. The "[NN] <rewrite>"
+# line is emitted as JSON `systemMessage` — visible to you, NOT added to the
+# model's context.
 #
-# The rewrite is shown via the JSON `systemMessage` field, which Claude Code
-# renders inline in the UI but does NOT add to the conversation context — so
-# the parent model never sees this side-channel output.
+# The call adds noticeable latency (~2–6s on the OAuth/Pro auth path) because
+# the headless `claude -p` invocation has to bootstrap a Claude Code wrapper.
+# We mitigate via the strictest minimal-startup flag stack we can use without
+# requiring an ANTHROPIC_API_KEY (which is what `--bare` would need).
 
 set -u
 
-# --- Debug log (always on) --------------------------------------------------
 LOG_FILE="${HOME}/.claude/language-tutor.log"
 log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG_FILE"; }
 log "==== hook fired (pid=$$, recursion=${LANGUAGE_TUTOR_ACTIVE:-0}) ===="
 
-# --- Recursion guard --------------------------------------------------------
+# Recursion guard: our own `claude -p` invocation may re-trigger this hook
+# in the nested headless session. Bail out fast.
 if [[ "${LANGUAGE_TUTOR_ACTIVE:-0}" == "1" ]]; then
   log "skip: recursion guard"
   exit 0
 fi
-
-# --- Load user config -------------------------------------------------------
-# Defaults; overridden by ~/.claude/language-tutor.config if present.
-LANGUAGE="english"
-# Haiku is fast & cheap; the right default for a per-prompt rewriter. Override
-# via ~/.claude/language-tutor.config (set MODEL=<id>, or MODEL= to follow /model).
-MODEL="claude-haiku-4-5-20251001"
-CONFIG_FILE="${HOME}/.claude/language-tutor.config"
-if [[ -r "$CONFIG_FILE" ]]; then
-  # shellcheck disable=SC1090
-  source "$CONFIG_FILE"
-fi
-LANGUAGE="$(printf '%s' "$LANGUAGE" | tr 'A-Z' 'a-z')"
-case "$LANGUAGE" in
-  english|en) LANGUAGE="english" ;;
-  chinese|zh|cn|中文) LANGUAGE="chinese" ;;
-  spanish|es|español|espanol) LANGUAGE="spanish" ;;
-  *)
-    log "unknown LANGUAGE='$LANGUAGE' — defaulting to english"
-    LANGUAGE="english"
-    ;;
-esac
-log "language=$LANGUAGE model=${MODEL:-<follow /model>}"
 
 # --- Parse hook input -------------------------------------------------------
 INPUT="$(cat)"
@@ -60,37 +40,43 @@ if [[ -z "$PROMPT" ]]; then log "skip: empty prompt"; exit 0; fi
 # Handle command-style prefixes:
 #   /cmd                → pure slash command, skip
 #   /cmd <text>         → slash command WITH args; coach just the args
-#   !cmd or !cmd <text> → shell passthrough, always skip (args are shell, not prose)
+#   !cmd or !cmd <text> → shell passthrough, always skip
 case "$PROMPT" in
   /*' '*)
-    # Slash command followed by space + text — strip the leading command token
-    # and coach whatever the user wrote after it.
     PROMPT="${PROMPT#* }"
-    # Strip any further leading whitespace just in case.
-    PROMPT="$(printf '%s' "$PROMPT" | /usr/bin/python3 -c 'import sys; sys.stdout.write(sys.stdin.read().lstrip())')"
-    log "slash command with args — coaching the args: [$(printf '%s' "$PROMPT" | head -c 80)]"
-    if [[ -z "$PROMPT" ]]; then log "skip: empty after stripping slash command"; exit 0; fi
+    # Trim leading whitespace via bash parameter expansion (no python startup).
+    PROMPT="${PROMPT#"${PROMPT%%[![:space:]]*}"}"
+    log "slash command with args — coaching: [$(printf '%s' "$PROMPT" | head -c 80)]"
+    if [[ -z "$PROMPT" ]]; then log "skip: empty after slash"; exit 0; fi
     ;;
-  /*)
-    log "skip: pure slash command (no args)"
-    exit 0
-    ;;
-  !*)
-    log "skip: shell passthrough"
-    exit 0
-    ;;
+  /*) log "skip: pure slash command"; exit 0 ;;
+  !*) log "skip: shell passthrough"; exit 0 ;;
 esac
 
-# --- Locate the claude CLI --------------------------------------------------
+# --- Load user config -------------------------------------------------------
+LANGUAGE="english"
+MODEL="claude-haiku-4-5-20251001"
+CONFIG_FILE="${HOME}/.claude/language-tutor.config"
+if [[ -r "$CONFIG_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$CONFIG_FILE"
+fi
+LANGUAGE="$(printf '%s' "$LANGUAGE" | tr 'A-Z' 'a-z')"
+case "$LANGUAGE" in
+  english|en) LANGUAGE="english" ;;
+  chinese|zh|cn|中文) LANGUAGE="chinese" ;;
+  spanish|es|español|espanol) LANGUAGE="spanish" ;;
+  *)
+    log "unknown LANGUAGE='$LANGUAGE' — defaulting to english"
+    LANGUAGE="english"
+    ;;
+esac
+log "language=$LANGUAGE model=${MODEL:-<follow /model>}"
+
 CLAUDE_BIN="$(command -v claude || true)"
 if [[ -z "$CLAUDE_BIN" ]]; then log "skip: claude CLI not on PATH"; exit 0; fi
-log "using claude=$CLAUDE_BIN"
 
-# --- Build the rewrite request ----------------------------------------------
-# Instructions go into --system-prompt (full REPLACE of Claude Code's default
-# system prompt). Without this, larger models (Opus) ignore our format rules
-# and answer the user's question as a "helpful developer assistant" instead
-# of just scoring and rewriting.
+# --- Build the coach system prompt -----------------------------------------
 if [[ "$LANGUAGE" == "spanish" ]]; then
   SYSTEM_INSTR="Eres un profesor de escritura en español. Para cada mensaje del usuario, haz DOS cosas:
 1. Puntúa el español del mensaje original en una escala de 0-100:
@@ -186,35 +172,37 @@ Strict rules:
 - Output ONLY the formatted line(s). Nothing else."
 fi
 
-# Use a predictable session id so we can delete the persisted transcript
-# afterwards — otherwise every rewrite would leave a stray .jsonl under
-# ~/.claude/projects/ forever.
-SESSION_ID="$(/usr/bin/uuidgen 2>/dev/null | tr 'A-Z' 'a-z')"
-if [[ -z "$SESSION_ID" ]]; then
-  SESSION_ID="$(/usr/bin/python3 -c 'import uuid; print(uuid.uuid4())')"
-fi
-log "session_id=$SESSION_ID"
-
 # Wrap the user message in unambiguous "this is text to rewrite, not a
-# question to answer" framing. Belt-and-suspenders alongside --system-prompt
-# so skill auto-triggers (e.g. systematic-debugging on "fix the bug") and the
-# model's helpful-assistant tendencies can't hijack the call.
+# question to answer" framing — belt-and-suspenders alongside --system-prompt
+# so the model's helpful-assistant tendencies can't hijack the call.
 USER_MSG="The text between the markers below is INPUT TO BE SCORED AND REWRITTEN per your system instructions. Do NOT respond to its content, do NOT offer help, do NOT ask follow-up questions. Output only \"[<score>] <rewritten message>\" and nothing else.
 
 <<<REWRITE_INPUT_BEGIN>>>
 $PROMPT
 <<<REWRITE_INPUT_END>>>"
 
-ARGS=(-p "$USER_MSG" --system-prompt "$SYSTEM_INSTR" --session-id "$SESSION_ID")
+# --- Build the claude args --------------------------------------------------
+# Minimal-startup flag stack (OAuth-compatible — none of these require an
+# API key, unlike `--bare`). Each cuts a meaningful chunk of wrapper init:
+#   --setting-sources ""              skip user/project/local settings.json loading
+#   --strict-mcp-config               ignore default MCP config sources
+#   --mcp-config '{"mcpServers":{}}'  inject an empty MCP config (no MCP startup)
+#   --no-session-persistence          don't write a transcript .jsonl
+ARGS=(
+  -p "$USER_MSG"
+  --system-prompt "$SYSTEM_INSTR"
+  --setting-sources ""
+  --strict-mcp-config
+  --mcp-config '{"mcpServers":{}}'
+  --no-session-persistence
+)
 if [[ -n "$MODEL" ]]; then
   ARGS+=(--model "$MODEL")
 fi
 
-# Pick a "clean" cwd for the headless call — one with no project CLAUDE.md or
-# .claude/ config to inject context. Without this, skills like
-# superpowers:systematic-debugging trigger on "fix the bug" and override our
-# --system-prompt. Fallback chain handles minimal/containerised systems where
-# /tmp may not exist.
+# Clean cwd for the headless call — escape project-level CLAUDE.md and any
+# auto-loaded skills (e.g. superpowers:systematic-debugging would otherwise
+# hijack "fix the bug" prompts).
 CLEAN_CWD=""
 for candidate in "${TMPDIR:-}" /tmp "$HOME"; do
   [[ -z "$candidate" ]] && continue
@@ -225,31 +213,36 @@ for candidate in "${TMPDIR:-}" /tmp "$HOME"; do
 done
 log "clean_cwd=${CLEAN_CWD:-<none, using current>}"
 
+# Env vars also kill nonessential startup work (also OAuth-compatible):
+#   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC  no background HTTP probes
+#   CLAUDE_CODE_DISABLE_AUTO_MEMORY           no /memory/ auto-load
+#   CLAUDE_CODE_DISABLE_CLAUDE_MDS            no CLAUDE.md auto-discovery
+#   CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS      no git-status injection
+#
+# Redirect stdin from /dev/null — without it `claude -p` waits 3 full seconds
+# for stdin data before proceeding, even though we passed the prompt as an arg.
 REWRITTEN="$(
   if [[ -n "$CLEAN_CWD" ]]; then cd "$CLEAN_CWD"; fi
-  LANGUAGE_TUTOR_ACTIVE=1 "$CLAUDE_BIN" "${ARGS[@]}" 2>/dev/null
+  LANGUAGE_TUTOR_ACTIVE=1 \
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+  CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 \
+  CLAUDE_CODE_DISABLE_CLAUDE_MDS=1 \
+  CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1 \
+    "$CLAUDE_BIN" "${ARGS[@]}" </dev/null 2>/dev/null
 )"
 
-# Delete the persisted session transcript created by the call above.
-deleted=$(find "${HOME}/.claude/projects" -type f -name "${SESSION_ID}.jsonl" -print -delete 2>/dev/null | wc -l | tr -d ' ')
-log "session transcript deleted: $deleted file(s)"
-
-# Trim leading/trailing whitespace
-REWRITTEN="$(printf '%s' "$REWRITTEN" | /usr/bin/python3 -c '
-import sys
-print(sys.stdin.read().strip())
-')"
+# Trim leading/trailing whitespace via bash parameter expansion (no python).
+REWRITTEN="${REWRITTEN#"${REWRITTEN%%[![:space:]]*}"}"
+REWRITTEN="${REWRITTEN%"${REWRITTEN##*[![:space:]]}"}"
 
 log "rewrite[0..120]=$(printf '%s' "$REWRITTEN" | head -c 120)"
 
-# Only skip if the model returned nothing — always surface a score otherwise.
 if [[ -z "$REWRITTEN" ]]; then log "skip: empty rewrite"; exit 0; fi
 
-# --- Emit JSON with systemMessage -------------------------------------------
+# Emit as systemMessage. Use python for the JSON encode so CJK characters
+# pass through as themselves (ensure_ascii=False) rather than \uXXXX escapes.
 OUTPUT_JSON="$(REWRITTEN="$REWRITTEN" /usr/bin/python3 -c '
 import json, os
-# ensure_ascii=False so Chinese characters appear as themselves rather than
-# \uXXXX escapes — Claude Code renders the former more reliably.
 print(json.dumps({"systemMessage": "\n" + os.environ.get("REWRITTEN", "")}, ensure_ascii=False))
 ')"
 log "emit json[0..200]=$(printf '%s' "$OUTPUT_JSON" | head -c 200)"
