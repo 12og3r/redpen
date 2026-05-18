@@ -27,8 +27,9 @@ stays clean.
 ## Install
 
 ```sh
-# 1. Register this repo as a marketplace (using GitHub source)
-/plugin marketplace add github:12og3r/language-tutor
+# 1. Register this repo as a marketplace
+/plugin marketplace add 12og3r/language-tutor
+# (https://github.com/12og3r/language-tutor also works)
 
 # 2. Install the plugin
 /plugin install language-tutor@language-tutor
