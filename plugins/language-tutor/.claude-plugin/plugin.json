@@ -1,0 +1,9 @@
+{
+  "name": "language-tutor",
+  "description": "Scores and rewrites every user prompt in your chosen target language (English, Chinese, or Spanish) via a UserPromptSubmit hook. Feedback is shown to you only, not added to the model's context.",
+  "version": "0.1.0",
+  "author": {
+    "name": "roger.kwan"
+  },
+  "keywords": ["language", "learning", "english", "chinese", "spanish", "hooks"]
+}
