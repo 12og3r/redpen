@@ -224,6 +224,7 @@ log "clean_cwd=${CLEAN_CWD:-<none, using current>}"
 REWRITTEN="$(
   if [[ -n "$CLEAN_CWD" ]]; then cd "$CLEAN_CWD"; fi
   LANGUAGE_TUTOR_ACTIVE=1 \
+  NODE_COMPILE_CACHE="${HOME}/.cache/language-tutor/v8" \
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
   CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 \
   CLAUDE_CODE_DISABLE_CLAUDE_MDS=1 \
