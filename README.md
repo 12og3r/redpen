@@ -93,6 +93,12 @@ To avoid burning model calls on inputs that aren't natural-language prose:
 - Pure slash commands (e.g. `/help`) — when a slash command is followed by
   space-separated args, those args ARE coached
 - Shell passthroughs (`!ls`, `!ls -la`)
+- Prompts longer than `MAX_PROMPT_CHARS` characters (default `2000`). The
+  UserPromptSubmit hook doesn't receive paste metadata from Claude Code, so
+  we can't surgically separate user-typed prose from pasted code, logs, or
+  transcripts. Length is the simplest reliable proxy — long prompts almost
+  always contain paste we don't want to rewrite. Tune via env var or by
+  adding `MAX_PROMPT_CHARS=<n>` to `~/.claude/language-tutor.config`.
 
 ## How it works
 
