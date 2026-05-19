@@ -123,6 +123,12 @@ if [[ "$LANGUAGE" == "spanish" ]]; then
      registros formales, librescos o académicos — no conviertas 'arregla el
      bug' en 'Por favor, sírvase resolver el defecto del software', y no
      rellenes con 'tenga la amabilidad de', 'le agradecería que', etc.
+   - **Conserva los saltos de línea EXACTAMENTE.** Si el original abarca varias
+     líneas, la reescritura debe abarcar el mismo número de líneas, y cada
+     línea reescrita debe corresponder a la línea original en la misma
+     posición. Nunca fusiones varias líneas originales en una sola, ni
+     dividas una línea original en varias. Las líneas en blanco permanecen
+     en blanco.
    - Conserva el significado original, rutas de archivos, identificadores,
      fragmentos de código y el tono.
    - Conserva **nombres de marca, productos, librerías, frameworks** (p.ej.
@@ -164,6 +170,9 @@ elif [[ "$LANGUAGE" == "chinese" ]]; then
      该用'这个/那个/搞/弄'的地方就用,简洁直接。坚决避免书面体、新闻体、
      教科书体的公文腔 —— 不要把'修一下这个 bug'改成'对该问题进行修复',
      不要硬塞'如下所示'、'综上所述'、'针对……'这种词
+   - **完整保留换行结构。** 如果原文有多行,改写后必须保留同样的行数,且
+     每一行改写都对应原文同一位置的那一行。绝对不要把多行合并成一行,也不
+     要把一行拆成多行。空行依然是空行。
    - 保留原意、文件路径、标识符、代码片段、语气
    - 保留**品牌名、产品名、库名、框架名**(如 Vue.js、React、Kotlin、TikTok)
      和**代码标识符**(函数名、变量名、保留字)的原始拼写,不要音译
@@ -207,6 +216,11 @@ else
      won't, that's). Keep it casual, direct, and concise. Avoid stiff, formal,
      or textbook phrasings — don't turn 'fix the bug' into 'Please resolve this
      software defect', and don't pad with 'kindly', 'could you please', etc.
+   - **Preserve line breaks exactly.** If the original spans multiple lines,
+     the rewrite must span the same number of lines, with each rewrite line
+     corresponding to the original line at the same position. Never merge
+     multiple original lines into one, and never split one original line into
+     multiple. Blank lines stay blank lines.
    - Preserve the original meaning, file paths, identifiers, code, and tone.
    - Preserve **brand names, product names, library names, framework names**
      (e.g. Vue.js, React, Kotlin, TikTok) and **code identifiers** (function
@@ -305,7 +319,7 @@ import json, os, re, difflib
 RESET = "\033[0m"
 DEFAULT = "\033[1;36m"  # bold cyan — body default (every char is cyan unless overridden)
 ADDED = "\033[1;32m"    # bold green — words AI added that were not in the original
-DELETE = "\033[9;31m"   # red strikethrough — removed text (followed by a space for breathing room)
+DELETE = "\033[9;31m"   # red strikethrough — removed text
 
 def score_color(s):
     if s >= 100: return "\033[1;92m"  # bold bright green
@@ -349,38 +363,54 @@ else:
     if score == 0 or not body.strip():
         out = f"{head} {body}".rstrip()
     else:
-        orig_tokens = tokenize(prompt, language)
-        new_tokens = tokenize(body, language)
-        sm = difflib.SequenceMatcher(a=orig_tokens, b=new_tokens, autojunk=False)
-        parts = []
-        for tag, i1, i2, j1, j2 in sm.get_opcodes():
-            old_seg = "".join(orig_tokens[i1:i2])
-            new_seg = "".join(new_tokens[j1:j2])
-            if tag == "equal":
-                if new_seg:
-                    parts.append(f"{DEFAULT}{new_seg}{RESET}")
-            elif tag == "delete":
-                # Strip ws so the strikethrough hugs only meaningful chars;
-                # the trailing " " gives the strike a visual gap from what
-                # follows.
-                s = old_seg.strip()
-                if s:
-                    parts.append(f"{DELETE}{s}{RESET} ")
-            elif tag == "insert":
-                # Pure addition — words AI supplied that were not in your
-                # original. Green = "learn this new vocabulary".
-                if new_seg:
-                    parts.append(f"{ADDED}{new_seg}{RESET}")
-            elif tag == "replace":
-                # Old struck + space, then new in green. Both insertions
-                # AND corrections are AI-supplied content the user should
-                # learn — green marks them uniformly.
-                s = old_seg.strip()
-                if s:
-                    parts.append(f"{DELETE}{s}{RESET} ")
-                if new_seg:
-                    parts.append(f"{ADDED}{new_seg}{RESET}")
-        joined = "".join(parts)
+        # Render a single line (or the whole text) as a tokenized colored
+        # diff. Whitespace tokens from `delete` blocks are dropped — emitting
+        # them would carry original line breaks into the rewrite layout and
+        # produce ghost newlines when SequenceMatcher aligned tokens across
+        # line boundaries.
+        def render(orig, new):
+            orig_tokens = tokenize(orig, language)
+            new_tokens = tokenize(new, language)
+            sm = difflib.SequenceMatcher(a=orig_tokens, b=new_tokens, autojunk=False)
+            parts = []
+            for tag, i1, i2, j1, j2 in sm.get_opcodes():
+                if tag == "equal":
+                    for tok in new_tokens[j1:j2]:
+                        if tok.strip():
+                            parts.append(f"{DEFAULT}{tok}{RESET}")
+                        else:
+                            parts.append(tok)
+                elif tag == "delete":
+                    for tok in orig_tokens[i1:i2]:
+                        if tok.strip():
+                            parts.append(f"{DELETE}{tok}{RESET}")
+                elif tag == "insert":
+                    for tok in new_tokens[j1:j2]:
+                        if tok.strip():
+                            parts.append(f"{ADDED}{tok}{RESET}")
+                        else:
+                            parts.append(tok)
+                elif tag == "replace":
+                    for tok in orig_tokens[i1:i2]:
+                        if tok.strip():
+                            parts.append(f"{DELETE}{tok}{RESET}")
+                    for tok in new_tokens[j1:j2]:
+                        if tok.strip():
+                            parts.append(f"{ADDED}{tok}{RESET}")
+                        else:
+                            parts.append(tok)
+            return "".join(parts)
+
+        # Diff per line when the AI preserved the line structure. This stops
+        # SequenceMatcher from aligning a token on line N of the original
+        # with one on line M of the rewrite, which would otherwise produce
+        # ghost line breaks in the displayed output.
+        orig_lines = prompt.split("\n")
+        new_lines = body.split("\n")
+        if len(orig_lines) == len(new_lines) and len(orig_lines) > 1:
+            joined = "\n".join(render(o, n) for o, n in zip(orig_lines, new_lines))
+        else:
+            joined = render(prompt, body)
         out = f"{head} {joined}"
 
 print(json.dumps({"systemMessage": "\n" + out}, ensure_ascii=False))
