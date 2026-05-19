@@ -37,6 +37,30 @@ log "prompt[0..80]=$(printf '%s' "$PROMPT" | head -c 80)"
 
 if [[ -z "$PROMPT" ]]; then log "skip: empty prompt"; exit 0; fi
 
+# Skip harness-injected envelopes. The UserPromptSubmit hook fires for every
+# prompt that lands in the conversation, including ones the harness synthesises
+# (background-task completion notifications, system reminders, slash-command
+# scaffolding, etc.) — those are NOT the user typing prose and shouldn't be
+# coached. The hook input has no `source` field to distinguish them, so we
+# detect by the leading XML-like envelope tag, which only system-synthesised
+# prompts use. A real user typing prose virtually never starts with `<foo>`.
+case "$PROMPT" in
+  '<task-notification>'*|\
+  '<system-reminder>'*|\
+  '<command-name>'*|\
+  '<command-message>'*|\
+  '<command-args>'*|\
+  '<local-command-stdout>'*|\
+  '<local-command-stderr>'*|\
+  '<bash-input>'*|\
+  '<bash-stdout>'*|\
+  '<bash-stderr>'*|\
+  '<user-prompt-submit-hook>'*)
+    log "skip: harness-injected envelope"
+    exit 0
+    ;;
+esac
+
 # Handle command-style prefixes:
 #   /cmd                → pure slash command, skip
 #   /cmd <text>         → slash command WITH args; coach just the args
