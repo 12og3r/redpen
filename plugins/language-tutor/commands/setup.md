@@ -10,7 +10,7 @@ explore the codebase, do not run other commands, do not summarise.
 
 Read `~/.claude/language-tutor.config`. Parse:
 - `LANGUAGE=<...>` (default: `english`)
-- `MODEL=<...>` (default: `haiku`)
+- `MODEL=<...>` (default: `sonnet`)
 
 Remember as `CURRENT_LANGUAGE` and `CURRENT_MODEL`.
 
@@ -36,10 +36,11 @@ the three languages above.)
 - header: `Model`
 - multiSelect: false
 - options (exactly these three, in this order; append ` (Recommended)` to whichever
-  one matches `CURRENT_MODEL` so the user can see what is currently selected):
-  - `Haiku` — Fast and cheap. Good enough for grammar rewriting.
-  - `Sonnet` — Balanced quality, cost, and latency.
-  - `Opus` — Smartest, slowest, most expensive.
+  one matches `CURRENT_MODEL` so the user can see what is currently selected.
+  If `CURRENT_MODEL` is unset/empty, append ` (Recommended)` to `Sonnet`):
+  - `Sonnet` — Balanced quality and latency. Fastest in practice (no forced thinking).
+  - `Haiku` — Cheapest, but slower than Sonnet on this task (Haiku 4.5 forces adaptive thinking → ~3× more tokens, ~3× the wall-clock).
+  - `Opus` — Smartest, most expensive.
 
 (AskUserQuestion auto-appends an `Other` option. UNLIKE the language question,
 the model question DOES respect the value the user types — power users can
@@ -64,7 +65,7 @@ Model:
   `claude-sonnet-4-5-20250929`, or any model id `claude --model` accepts).
   We pass it straight through to `claude --model <value>` at hook time,
   so any string the CLI accepts will work.
-- `Other` with an empty / whitespace-only value → `haiku` (fall back to
+- `Other` with an empty / whitespace-only value → `sonnet` (fall back to
   default).
 
 The three suggested options are the generic family aliases that
@@ -91,9 +92,10 @@ LANGUAGE=<new language>
 # aliases are recommended — they auto-resolve to the latest released
 # version of each family, so this config keeps working across model
 # releases without a plugin update:
-#   haiku    — fast & cheap (default)
-#   sonnet   — balanced
-#   opus     — smartest
+#   sonnet   — balanced; fastest in practice (default, recommended)
+#   haiku    — cheapest, but Haiku 4.5 forces adaptive thinking,
+#              so on coach prompts it's ~3× slower than Sonnet
+#   opus     — smartest, most expensive
 # You can also pin a specific version explicitly, e.g.
 #   MODEL=claude-haiku-4-5-20251001
 # Leave empty (MODEL=) to follow whatever Claude Code's /model is set to.

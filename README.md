@@ -50,7 +50,7 @@ This asks two questions:
 | Question | Choices |
 |---|---|
 | Language | `English` · `中文 (Chinese)` · `Español (Spanish)` |
-| Model    | `Haiku` · `Sonnet` · `Opus` |
+| Model    | `Sonnet` (default, recommended) · `Haiku` · `Opus` |
 
 The chosen values are written to `~/.language-tutor.config`. You can also edit
 that file by hand:
@@ -164,11 +164,15 @@ Key design choices:
 
 ## Limitations
 
-- Adds ~6–10s of latency before your prompt reaches the model (median ~8s
-  on the OAuth/Pro auth path; was ~12s before optimisations). On
-  `ANTHROPIC_API_KEY` auth, swapping in `--bare` would drop this to ~1s,
-  but that path is disabled here so subscription users still work.
-- Costs a Haiku call per prompt (~$0.0001 each at current pricing).
+- Adds ~2–9s of latency before your prompt reaches the model (median ~3.4s
+  with Sonnet on the OAuth/Pro auth path, measured over 100 calls; was ~10.5s
+  median with Haiku, because Haiku 4.5 forces adaptive extended thinking and
+  emits ~7× more tokens per call). On `ANTHROPIC_API_KEY` auth, swapping in
+  `--bare` would drop this further, but that path is disabled here so
+  subscription users still work.
+- Costs one Sonnet call per prompt. Sonnet output is short (median ~70 tokens
+  vs Haiku's ~660), so token spend is comparable or lower despite the
+  higher per-token rate.
 - Spanish vs English vs other Latin-script languages are not character-level
   distinguishable; for Spanish mode, the model decides Spanish-ness from
   vocabulary and grammar.

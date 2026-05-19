@@ -55,7 +55,7 @@ fi
 touch "$STAMP"
 
 # --- Load model from config (same logic as grammar_check.sh) ---------------
-MODEL="haiku"
+MODEL="sonnet"
 CONFIG_FILE="${HOME}/.claude/language-tutor.config"
 # shellcheck disable=SC1090
 [[ -r "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
