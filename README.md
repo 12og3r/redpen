@@ -50,18 +50,21 @@ This asks two questions:
 | Question | Choices |
 |---|---|
 | Language | `English` · `中文 (Chinese)` · `Español (Spanish)` |
-| Model    | `Haiku 4.5` · `Sonnet 4.6` · `Opus 4.7` |
+| Model    | `Haiku` · `Sonnet` · `Opus` |
 
 The chosen values are written to `~/.language-tutor.config`. You can also edit
 that file by hand:
 
 ```
 LANGUAGE=chinese
-MODEL=claude-sonnet-4-6
+MODEL=sonnet
 ```
 
-Set `MODEL=` (empty) to follow whatever Claude Code's `/model` is currently
-set to instead of pinning a specific model.
+`MODEL` accepts the generic family aliases `haiku` / `sonnet` / `opus` —
+`claude --model` resolves these to the latest released version, so this
+config keeps working across Anthropic model releases without a plugin
+update. Set `MODEL=` (empty) to follow whatever Claude Code's `/model`
+is currently set to instead.
 
 ## Scoring rubric
 

@@ -55,7 +55,7 @@ esac
 
 # --- Load user config -------------------------------------------------------
 LANGUAGE="english"
-MODEL="claude-haiku-4-5-20251001"
+MODEL="haiku"
 CONFIG_FILE="${HOME}/.claude/language-tutor.config"
 if [[ -r "$CONFIG_FILE" ]]; then
   # shellcheck disable=SC1090
