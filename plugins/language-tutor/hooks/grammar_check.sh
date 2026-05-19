@@ -55,7 +55,7 @@ esac
 
 # --- Load user config -------------------------------------------------------
 LANGUAGE="english"
-MODEL="claude-haiku-4-5-20251001"
+MODEL="haiku"
 CONFIG_FILE="${HOME}/.claude/language-tutor.config"
 if [[ -r "$CONFIG_FILE" ]]; then
   # shellcheck disable=SC1090
@@ -72,6 +72,20 @@ case "$LANGUAGE" in
     ;;
 esac
 log "language=$LANGUAGE model=${MODEL:-<follow /model>}"
+
+# --- Length-based skip ------------------------------------------------------
+# UserPromptSubmit hooks don't receive paste metadata from Claude Code, so we
+# can't isolate user-typed prose from pasted code/logs/transcripts. As a
+# pragmatic proxy, skip anything over a character cap — long prompts almost
+# always contain pasted material we don't want to rewrite. Override via the
+# MAX_PROMPT_CHARS env var or in ~/.claude/language-tutor.config.
+# ${#PROMPT} returns Unicode code-point count under a UTF-8 locale, so CJK
+# characters count as 1 each (matching what the user perceives).
+MAX_PROMPT_CHARS="${MAX_PROMPT_CHARS:-2000}"
+if (( ${#PROMPT} > MAX_PROMPT_CHARS )); then
+  log "skip: prompt too long (${#PROMPT} chars > $MAX_PROMPT_CHARS)"
+  exit 0
+fi
 
 CLAUDE_BIN="$(command -v claude || true)"
 if [[ -z "$CLAUDE_BIN" ]]; then log "skip: claude CLI not on PATH"; exit 0; fi
