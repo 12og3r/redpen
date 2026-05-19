@@ -32,7 +32,7 @@ a value, IGNORE the value and treat it as `English` — this plugin only support
 the three languages above.)
 
 **Question 2 — model**
-- question: `Which Claude model should the plugin use for rewriting?`
+- question: `Which Claude model should the plugin use for rewriting? Pick a family below, or choose Other to enter a specific model id (e.g. claude-haiku-4-5-20251001).`
 - header: `Model`
 - multiSelect: false
 - options (exactly these three, in this order; append ` (Recommended)` to whichever
