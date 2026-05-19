@@ -91,9 +91,24 @@ if [[ "$LANGUAGE" == "spanish" ]]; then
           el resto sea perfecto y aunque el carácter pertenezca a una marca o
           identificador, la puntuación debe ser 0. Dígitos, signos de puntuación
           (incluidos ¡ ¿), espacios y emoji NO son caracteres extranjeros.
-2. Reescribe el mensaje en español claro, natural e idiomático apropiado para
-   un desarrollador pidiendo ayuda a un asistente de IA. Reescribe SIEMPRE,
-   incluso cuando la puntuación sea 0. Al reescribir:
+2. Reescribe el mensaje en español **conversacional, coloquial e idiomático**
+   — como un desarrollador real escribiría en un chat o DM a un asistente de
+   IA. Reescribe SIEMPRE, incluso cuando la puntuación sea 0. Al reescribir:
+   - **Decodifica la intención ANTES de reescribir — preservar el significado
+     es innegociable.** Si una palabra está mal escrita, deformada, suena
+     fonéticamente rara o garabateada (p.ej. 'wacond' casi seguro es
+     'weekend', 'recivir' es 'recibir', 'fuites' es 'fuiste'), reconstruye lo
+     que el usuario **más probablemente quiso decir** y conserva ESE
+     significado en la reescritura. Adivina por fonética, similitud visual,
+     proximidad de teclas y contexto. NUNCA descartes silenciosamente una
+     palabra que no entiendas, ni reescribas el mensaje con otro significado
+     solo para que quede gramatical. Si realmente no puedes adivinar, deja la
+     palabra original tal cual en lugar de borrarla.
+   - **Suena hablado, no escrito.** Usa contracciones naturales (del, al), el
+     tono de 'tú' (no 'usted'), y un registro casual y directo. Evita los
+     registros formales, librescos o académicos — no conviertas 'arregla el
+     bug' en 'Por favor, sírvase resolver el defecto del software', y no
+     rellenes con 'tenga la amabilidad de', 'le agradecería que', etc.
    - Conserva el significado original, rutas de archivos, identificadores,
      fragmentos de código y el tono.
    - Conserva **nombres de marca, productos, librerías, frameworks** (p.ej.
@@ -122,8 +137,19 @@ elif [[ "$LANGUAGE" == "chinese" ]]; then
           凌驾于上面所有评分之外:只要看到一个英文字母,无论文本其余部分写得多好、
           也无论那个字母是不是技术术语/品牌名/标识符,分数都必须是 0。数字、
           标点、空格、emoji 不算作外语字符。
-2. 把消息改写成清晰、自然、地道的中文,符合开发者向 AI 助手提问的口吻。
-   即使分数是 0 也必须照常改写。改写时:
+2. 把消息改写成**口语化、地道**的中文 —— 像一个真实的开发者在 IM/聊天里
+   向 AI 助手提问的那种口吻。即使分数是 0 也必须照常改写。改写时:
+   - **先理解意图,再改写 —— 保留原意不可妥协。**
+     如果某个词看起来是拼写错误、形近字误、谐音字、拼音残缺或键入错位
+     (例如 'wacond' 几乎肯定是 'weekend','末后'通常是'末尾','你门'是
+     '你们'),必须先**重建用户最可能想表达的意思**,然后保留那个意思去
+     改写。从发音、字形、键盘相邻、上下文去猜。绝对不能因为看不懂一个
+     词就把它删掉,也绝对不能为了让句子通顺就把消息改成完全不同的意思。
+     实在猜不出来,就**保留原词不动**,也不要删。
+   - **像说话,不像写文章。** 该用语气词('吧'、'呢'、'啊'、'嘛')的地方就用,
+     该用'这个/那个/搞/弄'的地方就用,简洁直接。坚决避免书面体、新闻体、
+     教科书体的公文腔 —— 不要把'修一下这个 bug'改成'对该问题进行修复',
+     不要硬塞'如下所示'、'综上所述'、'针对……'这种词
    - 保留原意、文件路径、标识符、代码片段、语气
    - 保留**品牌名、产品名、库名、框架名**(如 Vue.js、React、Kotlin、TikTok)
      和**代码标识符**(函数名、变量名、保留字)的原始拼写,不要音译
@@ -151,9 +177,22 @@ else
           how good the rest is, and no matter whether the foreign character is a
           brand/product name. Digits, punctuation, whitespace and emoji are NOT
           foreign characters.
-2. Rewrite the message into clear, natural, idiomatic English suitable for a
-   developer asking an AI assistant for help. Always rewrite, even when the
-   score is 0. When rewriting:
+2. Rewrite the message into **conversational, idiomatic** English — the way a
+   real developer would type in chat or DM to an AI assistant. Always rewrite,
+   even when the score is 0. When rewriting:
+   - **Decode intent BEFORE rewriting — preserving meaning is non-negotiable.**
+     If a word looks misspelled, mangled, phonetic, or garbled (e.g. 'wacond'
+     almost certainly means 'weekend', 'recieve' means 'receive', 'how is you'
+     means 'how are you'), reconstruct what the user **most likely meant** and
+     keep THAT meaning in the rewrite. Guess from phonetics, visual similarity,
+     keyboard adjacency, and surrounding context. NEVER silently drop a word
+     you cannot parse, and NEVER rewrite the message into a different meaning
+     just to make it grammatical. If you truly cannot guess, keep the original
+     word as-is rather than deleting it.
+   - **Sound spoken, not written.** Use contractions (don't, can't, it's, I'm,
+     won't, that's). Keep it casual, direct, and concise. Avoid stiff, formal,
+     or textbook phrasings — don't turn 'fix the bug' into 'Please resolve this
+     software defect', and don't pad with 'kindly', 'could you please', etc.
    - Preserve the original meaning, file paths, identifiers, code, and tone.
    - Preserve **brand names, product names, library names, framework names**
      (e.g. Vue.js, React, Kotlin, TikTok) and **code identifiers** (function
@@ -242,9 +281,95 @@ if [[ -z "$REWRITTEN" ]]; then log "skip: empty rewrite"; exit 0; fi
 
 # Emit as systemMessage. Use python for the JSON encode so CJK characters
 # pass through as themselves (ensure_ascii=False) rather than \uXXXX escapes.
-OUTPUT_JSON="$(REWRITTEN="$REWRITTEN" /usr/bin/python3 -c '
-import json, os
-print(json.dumps({"systemMessage": "\n" + os.environ.get("REWRITTEN", "")}, ensure_ascii=False))
+#
+# Also: color the score by band and underline-bold the words that the rewrite
+# *changed* relative to the original — so the user sees what was wrong at a
+# glance. All client-side (difflib), no extra LLM call, no added latency.
+OUTPUT_JSON="$(REWRITTEN="$REWRITTEN" ORIGINAL_PROMPT="$PROMPT" LT_LANGUAGE="$LANGUAGE" /usr/bin/python3 -c '
+import json, os, re, difflib
+
+RESET = "\033[0m"
+DEFAULT = "\033[1;36m"  # bold cyan — body default (every char is cyan unless overridden)
+ADDED = "\033[1;32m"    # bold green — words AI added that were not in the original
+DELETE = "\033[9;31m"   # red strikethrough — removed text (followed by a space for breathing room)
+
+def score_color(s):
+    if s >= 100: return "\033[1;92m"  # bold bright green
+    if s >= 80:  return "\033[1;32m"  # bold green
+    if s >= 50:  return "\033[1;33m"  # bold yellow
+    if s >= 1:   return "\033[1;31m"  # bold red
+    return "\033[1;91m"               # bold bright red (score 0)
+
+def tokenize(s, lang):
+    # Chinese: char-level for CJK chars, contiguous non-CJK runs as one token.
+    # English/Spanish: word-level, keeping whitespace as its own tokens so
+    # join(tokens) reconstructs the original exactly.
+    if lang == "chinese":
+        out, buf = [], []
+        for ch in s:
+            cjk = ("一" <= ch <= "鿿"
+                   or "　" <= ch <= "〿"
+                   or "＀" <= ch <= "￯")
+            if cjk:
+                if buf: out.append("".join(buf)); buf = []
+                out.append(ch)
+            else:
+                buf.append(ch)
+        if buf: out.append("".join(buf))
+        return out
+    return re.findall(r"\S+|\s+", s)
+
+raw = os.environ.get("REWRITTEN", "")
+prompt = os.environ.get("ORIGINAL_PROMPT", "")
+language = os.environ.get("LT_LANGUAGE", "english")
+
+m = re.match(r"^\s*\[(\d+)\]\s*(.*)$", raw, re.DOTALL)
+if not m:
+    out = raw
+else:
+    score = int(m.group(1))
+    body = m.group(2)
+    head = f"{score_color(score)}[{score}]{RESET}"
+    # Skip diff when score is 0 — the original was a different language, so
+    # every token is "changed" and the highlight is just noise.
+    if score == 0 or not body.strip():
+        out = f"{head} {body}".rstrip()
+    else:
+        orig_tokens = tokenize(prompt, language)
+        new_tokens = tokenize(body, language)
+        sm = difflib.SequenceMatcher(a=orig_tokens, b=new_tokens, autojunk=False)
+        parts = []
+        for tag, i1, i2, j1, j2 in sm.get_opcodes():
+            old_seg = "".join(orig_tokens[i1:i2])
+            new_seg = "".join(new_tokens[j1:j2])
+            if tag == "equal":
+                if new_seg:
+                    parts.append(f"{DEFAULT}{new_seg}{RESET}")
+            elif tag == "delete":
+                # Strip ws so the strikethrough hugs only meaningful chars;
+                # the trailing " " gives the strike a visual gap from what
+                # follows.
+                s = old_seg.strip()
+                if s:
+                    parts.append(f"{DELETE}{s}{RESET} ")
+            elif tag == "insert":
+                # Pure addition — words AI supplied that were not in your
+                # original. Green = "learn this new vocabulary".
+                if new_seg:
+                    parts.append(f"{ADDED}{new_seg}{RESET}")
+            elif tag == "replace":
+                # Old struck + space, then new in green. Both insertions
+                # AND corrections are AI-supplied content the user should
+                # learn — green marks them uniformly.
+                s = old_seg.strip()
+                if s:
+                    parts.append(f"{DELETE}{s}{RESET} ")
+                if new_seg:
+                    parts.append(f"{ADDED}{new_seg}{RESET}")
+        joined = "".join(parts)
+        out = f"{head} {joined}"
+
+print(json.dumps({"systemMessage": "\n" + out}, ensure_ascii=False))
 ')"
 log "emit json[0..200]=$(printf '%s' "$OUTPUT_JSON" | head -c 200)"
 printf '%s\n' "$OUTPUT_JSON"
