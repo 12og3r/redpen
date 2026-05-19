@@ -63,8 +63,11 @@ MODEL=sonnet
 `MODEL` accepts the generic family aliases `haiku` / `sonnet` / `opus` —
 `claude --model` resolves these to the latest released version, so this
 config keeps working across Anthropic model releases without a plugin
-update. Set `MODEL=` (empty) to follow whatever Claude Code's `/model`
-is currently set to instead.
+update. Power users can also pin a specific version
+(e.g. `MODEL=claude-haiku-4-5-20251001`) — any value `claude --model`
+accepts will work. Pick `Other` in `/language-tutor:setup` to type a
+custom value. Set `MODEL=` (empty) to follow whatever Claude Code's
+`/model` is currently set to instead.
 
 ## Scoring rubric
 

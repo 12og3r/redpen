@@ -41,9 +41,10 @@ the three languages above.)
   - `Sonnet` — Balanced quality, cost, and latency.
   - `Opus` — Smartest, slowest, most expensive.
 
-(AskUserQuestion will auto-append an `Other` option. If the user picks it and
-types a value, IGNORE the value and treat it as `Haiku` — this plugin
-only supports the three Anthropic model families above.)
+(AskUserQuestion auto-appends an `Other` option. UNLIKE the language question,
+the model question DOES respect the value the user types — power users can
+pin a specific version like `claude-haiku-4-5-20251001` or try an experimental
+model alias. See Step 3 for how that value is handled.)
 
 ## Step 3 — Map answers to config values
 
@@ -58,12 +59,20 @@ Model:
 - `Haiku ...` → `haiku`
 - `Sonnet ...` → `sonnet`
 - `Opus ...` → `opus`
-- `Other` (any custom value) → `haiku` — this plugin only supports the three
-  Anthropic model families above.
+- `Other` with a typed value → **use the value the user typed, trimmed of
+  surrounding whitespace, verbatim** (e.g. `claude-haiku-4-5-20251001`,
+  `claude-sonnet-4-5-20250929`, or any model id `claude --model` accepts).
+  We pass it straight through to `claude --model <value>` at hook time,
+  so any string the CLI accepts will work.
+- `Other` with an empty / whitespace-only value → `haiku` (fall back to
+  default).
 
-These are the generic family aliases that `claude --model` accepts; Anthropic
-resolves them to the latest released version of that family, so this plugin
-doesn't need a re-release whenever a new Haiku/Sonnet/Opus ships.
+The three suggested options are the generic family aliases that
+`claude --model` accepts; Anthropic resolves them to the latest released
+version of that family, so the plugin doesn't need a re-release whenever a
+new Haiku/Sonnet/Opus ships. The `Other` escape hatch is for users who want
+to pin a specific version or try a model the CLI knows about but this
+plugin doesn't list.
 
 ## Step 4 — Write the new config
 
@@ -78,22 +87,28 @@ content (substitute the chosen values):
 #   aliases: en | zh, cn, 中文 | es, español, espanol
 LANGUAGE=<new language>
 #
-# MODEL: one of the generic family aliases. claude --model resolves these to
-# the latest released version of each family, so this config keeps working
-# across Anthropic model releases without a plugin update.
+# MODEL: any value `claude --model` accepts. The three generic family
+# aliases are recommended — they auto-resolve to the latest released
+# version of each family, so this config keeps working across model
+# releases without a plugin update:
 #   haiku    — fast & cheap (default)
 #   sonnet   — balanced
 #   opus     — smartest
+# You can also pin a specific version explicitly, e.g.
+#   MODEL=claude-haiku-4-5-20251001
 # Leave empty (MODEL=) to follow whatever Claude Code's /model is set to.
 MODEL=<new model>
 ```
 
 ## Step 5 — Confirm
 
-Reply with ONE short line summarising what changed, using the human label, e.g.:
+Reply with ONE short line summarising what changed, using the human label
+for the three known families (`Haiku` / `Sonnet` / `Opus`) and the raw
+typed value for any custom `Other` choice, e.g.:
 - Both changed: `✓ Switched to 中文 with Sonnet.`
 - Only language: `✓ Language set to English (model unchanged: Haiku).`
 - Only model: `✓ Model set to Opus (language unchanged: English).`
+- Custom model: `✓ Model set to claude-haiku-4-5-20251001 (language unchanged: English).`
 - Nothing changed: `Already on English + Haiku — no change.`
 
 New setting takes effect on your next prompt. No further explanation.
