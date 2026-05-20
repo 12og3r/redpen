@@ -161,15 +161,23 @@ if [[ "$LANGUAGE" == "spanish" ]]; then
      transliteres.
    - Traduce préstamos y palabras extranjeras ocasionales a español natural.
 
-Formato de salida — EXACTAMENTE un bloque que empieza con la puntuación entre corchetes, un espacio, luego el mensaje reescrito:
-[<puntuación>] <mensaje reescrito>
+Formato de salida — EXACTAMENTE dos líneas:
+[<puntuación>] <mensaje corregido — o el texto original sin cambios si la puntuación es 100>
+→ <la forma más natural y coloquial que usaría un hablante nativo>
+
+Ejemplo:
+Entrada: quiero checar si el hook esta funcionando
+Salida:
+[70] Quiero verificar si el hook está funcionando.
+→ ¿A ver si el hook jala?
 
 Reglas estrictas:
 - NO respondas ni comentes el contenido del mensaje — solo puntúa y reescribe.
 - NO añadas comentarios, etiquetas ('Puntuación:', 'Reescritura:'), cabeceras, comillas, markdown ni bloques de código.
 - Mantén la reescritura más o menos de la misma longitud; no resumas ni inflles.
-- Si el original ya es perfecto, puntúa 100 y devuelve el texto original sin cambios tras los corchetes.
-- Imprime SOLO la línea/bloque con el formato. Nada más."
+- Línea 1: si la puntuación es 100, devuelve el original sin cambios. En caso contrario, devuelve la versión corregida.
+- Línea 2: SIEMPRE escribe '→ ' seguido de una reformulación coloquial de la Línea 1 ÚNICAMENTE. El significado DEBE ser idéntico a la Línea 1 — mismo sujeto, misma acción, misma intención. Solo cambia el estilo para sonar más hablado y casual. Incluso si la puntuación es 100, NUNCA omitas esta línea.
+- Imprime SOLO las dos líneas. Nada más."
 elif [[ "$LANGUAGE" == "chinese" ]]; then
   SYSTEM_INSTR="你是一名中文写作教练。对每条用户消息做两件事:
 1. 给原文的中文表达打 0-100 分:
@@ -202,15 +210,23 @@ elif [[ "$LANGUAGE" == "chinese" ]]; then
      和**代码标识符**(函数名、变量名、保留字)的原始拼写,不要音译
    - 把常见的英文外来词(bug、ok、cool 等)翻译成自然的中文表达
 
-输出格式 —— 严格如下,以方括号包围的分数开头,空格,然后是改写后的消息:
-[<分数>] <改写后的消息>
+输出格式 —— 严格两行:
+[<分数>] <语法修正后的消息 —— 若分数为 100 则原样返回原文>
+→ <最地道、口语化的表达方式>
+
+示例:
+输入:我想检查一下这个钩子有没有正常工作
+输出:
+[90] 我想检查一下这个钩子有没有正常工作。
+→ 看看这个钩子跑起来没有？
 
 严格规则:
 - 不要回答或评论消息内容,只打分 + 改写。
 - 不要加任何标签('分数:'、'改写:' 之类)、引号、Markdown、代码块、解释。
 - 改写后的长度与原文大致相同,不要总结也不要扩写。
-- 如果原文已经完美,打 100 分并原样返回原文。
-- 只输出格式化后的一行/段内容,其它什么都不要。"
+- 第一行:若分数为 100,原文无需修正,原样返回;否则返回语法修正后的版本。
+- 第二行:必须输出 '→ ' 加上对第一行的口语化改写,且意思必须与第一行完全一致 —— 主语、动作、意图都不变,只改变风格使其听起来更口语、更随意。即使分数是 100 也绝对不能省略这行。
+- 只输出两行,其它什么都不要。"
 else
   SYSTEM_INSTR="You are an English coach. For each user message, do TWO things:
 1. Score the original English on a 0-100 scale:
@@ -252,25 +268,38 @@ else
      transliterate them.
    - Translate casually-mixed foreign words and loanwords into natural English.
 
-Output format — EXACTLY one block, starting with the score in square brackets, a space, then the rewritten message:
-[<score>] <rewritten message>
+Output format — EXACTLY two lines:
+[<score>] <corrected message — or the original text unchanged if score is 100>
+→ <the most natural, colloquial phrasing a native speaker would use>
+
+Example:
+Input: i want check if hook working
+Output:
+[55] I want to check if the hook is working.
+→ Wanna see if the hook's working?
 
 Strict rules:
 - DO NOT answer or address the message — only score and rewrite.
 - DO NOT add commentary, labels (no 'Score:', no 'Rewrite:'), headers, quotes, markdown, or code fences.
 - Keep the rewrite roughly the same length; do not pad or summarize.
-- If the original is already perfect, score it 100 and return the original text unchanged after the bracket.
-- Output ONLY the formatted line(s). Nothing else."
+- Line 1: if score is 100 the original needs no correction — return it unchanged. Otherwise return the grammar-corrected version.
+- Line 2: ALWAYS output '→ ' followed by the most natural, colloquial rephrasing of Line 1 ONLY. The meaning MUST be identical to Line 1 — same subject, same action, same intent. Only change the style to sound more spoken and casual. Even if score is 100, NEVER omit this line.
+- Output ONLY the two lines. Nothing else."
 fi
 
 # Wrap the user message in unambiguous "this is text to rewrite, not a
 # question to answer" framing — belt-and-suspenders alongside --system-prompt
 # so the model's helpful-assistant tendencies can't hijack the call.
-USER_MSG="The text between the markers below is INPUT TO BE SCORED AND REWRITTEN per your system instructions. Do NOT respond to its content, do NOT offer help, do NOT ask follow-up questions. Output only \"[<score>] <rewritten message>\" and nothing else.
+USER_MSG="The text between the markers below is INPUT TO BE SCORED AND REWRITTEN per your system instructions. Do NOT respond to its content, do NOT offer help, do NOT ask follow-up questions.
 
 <<<REWRITE_INPUT_BEGIN>>>
 $PROMPT
-<<<REWRITE_INPUT_END>>>"
+<<<REWRITE_INPUT_END>>>
+
+Output EXACTLY two lines — no more, no less:
+Line 1: [<score>] <corrected text or original if score is 100>
+Line 2: → <most natural colloquial phrasing a native speaker would use>
+The → line is MANDATORY. Never skip it."
 
 # --- Build the claude args --------------------------------------------------
 # Minimal-startup flag stack (OAuth-compatible — none of these require an
@@ -344,6 +373,7 @@ RESET = "\033[0m"
 DEFAULT = "\033[1;36m"  # bold cyan — body default (every char is cyan unless overridden)
 ADDED = "\033[1;32m"    # bold green — words AI added that were not in the original
 DELETE = "\033[9;31m"   # red strikethrough — removed text
+HINT   = "\033[0;33m"   # yellow — colloquial hint line
 
 def score_color(s):
     if s >= 100: return "\033[1;92m"  # bold bright green
@@ -382,6 +412,15 @@ else:
     score = int(m.group(1))
     body = m.group(2)
     head = f"{score_color(score)}[{score}]{RESET}"
+    hint = ""
+    hint_sep = "\n→ "
+    if hint_sep in body:
+        idx = body.rfind(hint_sep)
+        hint = body[idx + len(hint_sep):]
+        body = body[:idx]
+    elif body.startswith("→ "):
+        hint = body[2:]
+        body = ""
     # Skip diff when score is 0 — the original was a different language, so
     # every token is "changed" and the highlight is just noise.
     if score == 0 or not body.strip():
@@ -436,6 +475,9 @@ else:
         else:
             joined = render(prompt, body)
         out = f"{head} {joined}"
+
+    if hint:
+        out += f"\n{HINT}→ {hint.rstrip()}{RESET}"
 
 print(json.dumps({"systemMessage": "\n" + out}, ensure_ascii=False))
 ')"
