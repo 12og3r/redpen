@@ -23,14 +23,15 @@ Call `AskUserQuestion` ONCE with all three questions:
 - question: `Which language do you want the language-tutor plugin to coach you on?`
 - header: `Language`
 - multiSelect: false
-- options (only these three; if user picks the auto-added Other, fall back to English):
+- options (only these four; if user picks the auto-added Other, fall back to English):
   - `English` — Practise English. Plugin rewrites English prompts.
   - `中文 (Chinese)` — Practise Chinese. Plugin rewrites Chinese prompts.
   - `Español (Spanish)` — Practise Spanish. Plugin rewrites Spanish prompts.
+  - `日本語 (Japanese)` — Practise Japanese. Plugin rewrites Japanese prompts.
 
 (AskUserQuestion auto-appends an `Other` option. If the user picks it and types
 a value, IGNORE the value and treat it as `English` — this plugin only supports
-the three languages above.)
+the four languages above.)
 
 **Question 2 — model**
 - question: `Which Claude model should the plugin use for rewriting? Pick a family below, or choose Other to enter a specific model id (e.g. claude-haiku-4-5-20251001).`
@@ -63,8 +64,10 @@ Language:
 - `English` → `english`
 - `中文 (Chinese)` → `chinese`
 - `Español (Spanish)` → `spanish`
+- `日本語 (Japanese)` → `japanese`
 - `Other` (any custom value the user typed) → `english` — this plugin only
-  supports English, Chinese, and Spanish; ignore whatever string the user typed.
+  supports English, Chinese, Spanish, and Japanese; ignore whatever string the
+  user typed.
 
 Model:
 - `Haiku ...` → `haiku`
@@ -99,8 +102,8 @@ content (substitute the chosen values):
 # language-tutor plugin config — sourced by the UserPromptSubmit hook.
 #
 # Supported LANGUAGE values:
-#   english | chinese | spanish
-#   aliases: en | zh, cn, 中文 | es, español, espanol
+#   english | chinese | spanish | japanese
+#   aliases: en | zh, cn, 中文 | es, español, espanol | ja, jp, 日本語
 LANGUAGE=<new language>
 #
 # MODEL: any value `claude --model` accepts. The three generic family
