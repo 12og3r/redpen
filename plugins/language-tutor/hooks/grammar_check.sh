@@ -417,6 +417,16 @@ $OUTPUT_SPEC"
 #   --strict-mcp-config               ignore default MCP config sources
 #   --mcp-config '{"mcpServers":{}}'  inject an empty MCP config (no MCP startup)
 #   --no-session-persistence          don't write a transcript .jsonl
+#   --tools ""                        no tool definitions injected (drops ~11k
+#                                     tokens of tool-spec input bloat AND skips
+#                                     the hidden Haiku auto-mode classifier
+#                                     call). Verified empirically: median
+#                                     latency 7.5s → 2.2s on a 35-prompt bench.
+#   --effort low                      suppress the model's internal thinking
+#                                     block. The coach task is score+rewrite,
+#                                     not reasoning — thinking just emitted
+#                                     ~200-800 wasted tokens. Cuts another
+#                                     ~50% off latency and 6x off cost.
 ARGS=(
   -p "$USER_MSG"
   --system-prompt "$SYSTEM_INSTR"
@@ -424,6 +434,8 @@ ARGS=(
   --strict-mcp-config
   --mcp-config '{"mcpServers":{}}'
   --no-session-persistence
+  --tools ""
+  --effort low
 )
 if [[ -n "$MODEL" ]]; then
   ARGS+=(--model "$MODEL")

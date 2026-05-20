@@ -81,6 +81,8 @@ log "spawning background warmup (model=${MODEL:-<follow /model>}, cache=$CACHE_D
     --strict-mcp-config
     --mcp-config '{"mcpServers":{}}'
     --no-session-persistence
+    --tools ""
+    --effort low
   )
   if [[ -n "${MODEL:-}" ]]; then
     ARGS+=(--model "$MODEL")
