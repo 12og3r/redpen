@@ -11,12 +11,13 @@ explore the codebase, do not run other commands, do not summarise.
 Read `~/.claude/language-tutor.config`. Parse:
 - `LANGUAGE=<...>` (default: `english`)
 - `MODEL=<...>` (default: `sonnet`)
+- `SHOW_HINT=<on|off>` (default: `on`)
 
-Remember as `CURRENT_LANGUAGE` and `CURRENT_MODEL`.
+Remember as `CURRENT_LANGUAGE`, `CURRENT_MODEL`, `CURRENT_SHOW_HINT`.
 
-## Step 2 — Ask the user (single AskUserQuestion call, two questions)
+## Step 2 — Ask the user (single AskUserQuestion call, three questions)
 
-Call `AskUserQuestion` ONCE with both questions:
+Call `AskUserQuestion` ONCE with all three questions:
 
 **Question 1 — language**
 - question: `Which language do you want the language-tutor plugin to coach you on?`
@@ -47,6 +48,15 @@ the model question DOES respect the value the user types — power users can
 pin a specific version like `claude-haiku-4-5-20251001` or try an experimental
 model alias. See Step 3 for how that value is handled.)
 
+**Question 3 — native style line**
+- question: `Show a second "native style" line with a more idiomatic rephrasing under each rewrite?`
+- header: `Native style`
+- multiSelect: false
+- options (append ` (Recommended)` to whichever matches `CURRENT_SHOW_HINT`; if
+  unset/empty, append it to `On`):
+  - `On` — Show the divider + native-style rephrasing line under each rewrite.
+  - `Off` — Only show the scored rewrite line. No second line.
+
 ## Step 3 — Map answers to config values
 
 Language:
@@ -67,6 +77,11 @@ Model:
   so any string the CLI accepts will work.
 - `Other` with an empty / whitespace-only value → `sonnet` (fall back to
   default).
+
+Native hint:
+- `On ...` → `on`
+- `Off ...` → `off`
+- `Other` (anything else) → `on` (fall back to default).
 
 The three suggested options are the generic family aliases that
 `claude --model` accepts; Anthropic resolves them to the latest released
@@ -100,6 +115,10 @@ LANGUAGE=<new language>
 #   MODEL=claude-haiku-4-5-20251001
 # Leave empty (MODEL=) to follow whatever Claude Code's /model is set to.
 MODEL=<new model>
+#
+# SHOW_HINT: whether to show a second "native style" line under each rewrite
+# with a more idiomatic, colloquial rephrasing. on (default) | off.
+SHOW_HINT=<new show_hint>
 ```
 
 ## Step 5 — Confirm

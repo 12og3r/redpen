@@ -80,11 +80,14 @@ esac
 # --- Load user config -------------------------------------------------------
 LANGUAGE="english"
 MODEL="sonnet"
+SHOW_HINT="on"
 CONFIG_FILE="${HOME}/.claude/language-tutor.config"
 if [[ -r "$CONFIG_FILE" ]]; then
   # shellcheck disable=SC1090
   source "$CONFIG_FILE"
 fi
+SHOW_HINT="$(printf '%s' "$SHOW_HINT" | tr 'A-Z' 'a-z')"
+case "$SHOW_HINT" in off|false|0|no) SHOW_HINT="off" ;; *) SHOW_HINT="on" ;; esac
 LANGUAGE="$(printf '%s' "$LANGUAGE" | tr 'A-Z' 'a-z')"
 case "$LANGUAGE" in
   english|en) LANGUAGE="english" ;;
@@ -161,23 +164,26 @@ if [[ "$LANGUAGE" == "spanish" ]]; then
      transliteres.
    - Traduce préstamos y palabras extranjeras ocasionales a español natural.
 
-Formato de salida — EXACTAMENTE dos líneas:
+Formato de salida — EXACTAMENTE tres líneas:
 [<puntuación>] <mensaje corregido — o el texto original sin cambios si la puntuación es 100>
-→ <la forma más natural y coloquial que usaría un hablante nativo>
+──── Estilo nativo ────
+<la forma más natural y coloquial que usaría un hablante nativo>
 
 Ejemplo:
 Entrada: quiero checar si el hook esta funcionando
 Salida:
 [70] Quiero verificar si el hook está funcionando.
-→ ¿A ver si el hook jala?
+──── Estilo nativo ────
+¿A ver si el hook jala?
 
 Reglas estrictas:
 - NO respondas ni comentes el contenido del mensaje — solo puntúa y reescribe.
 - NO añadas comentarios, etiquetas ('Puntuación:', 'Reescritura:'), cabeceras, comillas, markdown ni bloques de código.
 - Mantén la reescritura más o menos de la misma longitud; no resumas ni inflles.
 - Línea 1: si la puntuación es 100, devuelve el original sin cambios. En caso contrario, devuelve la versión corregida.
-- Línea 2: SIEMPRE escribe '→ ' seguido de una reformulación coloquial de la Línea 1 ÚNICAMENTE. El significado DEBE ser idéntico a la Línea 1 — mismo sujeto, misma acción, misma intención. Solo cambia el estilo para sonar más hablado y casual. Incluso si la puntuación es 100, NUNCA omitas esta línea.
-- Imprime SOLO las dos líneas. Nada más."
+- Línea 2: SIEMPRE escribe EXACTAMENTE '──── Estilo nativo ────' como separador — sin contenido adicional en esta línea.
+- Línea 3: la reformulación coloquial de la Línea 1 ÚNICAMENTE. El significado DEBE ser idéntico a la Línea 1 — mismo sujeto, misma acción, misma intención. Solo cambia el estilo para sonar más hablado y casual. Incluso si la puntuación es 100, NUNCA omitas las líneas 2 y 3.
+- Imprime SOLO las tres líneas. Nada más."
 elif [[ "$LANGUAGE" == "chinese" ]]; then
   SYSTEM_INSTR="你是一名中文写作教练。对每条用户消息做两件事:
 1. 给原文的中文表达打 0-100 分:
@@ -210,23 +216,26 @@ elif [[ "$LANGUAGE" == "chinese" ]]; then
      和**代码标识符**(函数名、变量名、保留字)的原始拼写,不要音译
    - 把常见的英文外来词(bug、ok、cool 等)翻译成自然的中文表达
 
-输出格式 —— 严格两行:
+输出格式 —— 严格三行:
 [<分数>] <语法修正后的消息 —— 若分数为 100 则原样返回原文>
-→ <最地道、口语化的表达方式>
+──── 地道说法 ────
+<最地道、口语化的表达方式>
 
 示例:
 输入:我想检查一下这个钩子有没有正常工作
 输出:
 [90] 我想检查一下这个钩子有没有正常工作。
-→ 看看这个钩子跑起来没有？
+──── 地道说法 ────
+看看这个钩子跑起来没有？
 
 严格规则:
 - 不要回答或评论消息内容,只打分 + 改写。
 - 不要加任何标签('分数:'、'改写:' 之类)、引号、Markdown、代码块、解释。
 - 改写后的长度与原文大致相同,不要总结也不要扩写。
 - 第一行:若分数为 100,原文无需修正,原样返回;否则返回语法修正后的版本。
-- 第二行:必须输出 '→ ' 加上对第一行的口语化改写,且意思必须与第一行完全一致 —— 主语、动作、意图都不变,只改变风格使其听起来更口语、更随意。即使分数是 100 也绝对不能省略这行。
-- 只输出两行,其它什么都不要。"
+- 第二行:必须原样输出 '──── 地道说法 ────' 作为分隔线 —— 这一行不要带任何其它内容。
+- 第三行:对第一行的口语化改写,且意思必须与第一行完全一致 —— 主语、动作、意图都不变,只改变风格使其听起来更口语、更随意。即使分数是 100 也绝对不能省略第二、三行。
+- 只输出这三行,其它什么都不要。"
 else
   SYSTEM_INSTR="You are an English coach. For each user message, do TWO things:
 1. Score the original English on a 0-100 scale:
@@ -268,38 +277,50 @@ else
      transliterate them.
    - Translate casually-mixed foreign words and loanwords into natural English.
 
-Output format — EXACTLY two lines:
+Output format — EXACTLY three lines:
 [<score>] <corrected message — or the original text unchanged if score is 100>
-→ <the most natural, colloquial phrasing a native speaker would use>
+──── Native style ────
+<the most natural, colloquial phrasing a native speaker would use>
 
 Example:
 Input: i want check if hook working
 Output:
 [55] I want to check if the hook is working.
-→ Wanna see if the hook's working?
+──── Native style ────
+Wanna see if the hook's working?
 
 Strict rules:
 - DO NOT answer or address the message — only score and rewrite.
 - DO NOT add commentary, labels (no 'Score:', no 'Rewrite:'), headers, quotes, markdown, or code fences.
 - Keep the rewrite roughly the same length; do not pad or summarize.
 - Line 1: if score is 100 the original needs no correction — return it unchanged. Otherwise return the grammar-corrected version.
-- Line 2: ALWAYS output '→ ' followed by the most natural, colloquial rephrasing of Line 1 ONLY. The meaning MUST be identical to Line 1 — same subject, same action, same intent. Only change the style to sound more spoken and casual. Even if score is 100, NEVER omit this line.
-- Output ONLY the two lines. Nothing else."
+- Line 2: ALWAYS output EXACTLY '──── Native style ────' as a divider — no other content on this line.
+- Line 3: the colloquial rephrasing of Line 1 ONLY. The meaning MUST be identical to Line 1 — same subject, same action, same intent. Only change the style to sound more spoken and casual. Even if score is 100, NEVER omit lines 2 and 3.
+- Output ONLY the three lines. Nothing else."
 fi
 
 # Wrap the user message in unambiguous "this is text to rewrite, not a
 # question to answer" framing — belt-and-suspenders alongside --system-prompt
 # so the model's helpful-assistant tendencies can't hijack the call.
+if [[ "$SHOW_HINT" == "off" ]]; then
+  OUTPUT_SPEC="Output EXACTLY ONE line — no more, no less:
+[<score>] <corrected text or original if score is 100>
+Do NOT output a divider line. Do NOT output a 'native style' rephrasing. ONE line only."
+else
+  OUTPUT_SPEC="Output EXACTLY three lines — no more, no less:
+Line 1: [<score>] <corrected text or original if score is 100>
+Line 2: divider — EXACTLY '──── Native style ────' (en) / '──── 地道说法 ────' (zh) / '──── Estilo nativo ────' (es). NO other content on this line.
+Line 3: <the most natural colloquial phrasing a native speaker would use>
+The divider line and the colloquial line are BOTH MANDATORY. Never skip them."
+fi
+
 USER_MSG="The text between the markers below is INPUT TO BE SCORED AND REWRITTEN per your system instructions. Do NOT respond to its content, do NOT offer help, do NOT ask follow-up questions.
 
 <<<REWRITE_INPUT_BEGIN>>>
 $PROMPT
 <<<REWRITE_INPUT_END>>>
 
-Output EXACTLY two lines — no more, no less:
-Line 1: [<score>] <corrected text or original if score is 100>
-Line 2: → <most natural colloquial phrasing a native speaker would use>
-The → line is MANDATORY. Never skip it."
+$OUTPUT_SPEC"
 
 # --- Build the claude args --------------------------------------------------
 # Minimal-startup flag stack (OAuth-compatible — none of these require an
@@ -413,14 +434,18 @@ else:
     body = m.group(2)
     head = f"{score_color(score)}[{score}]{RESET}"
     hint = ""
-    hint_sep = "\n→ "
-    if hint_sep in body:
-        idx = body.rfind(hint_sep)
-        hint = body[idx + len(hint_sep):]
-        body = body[:idx]
-    elif body.startswith("→ "):
-        hint = body[2:]
-        body = ""
+    hint_label = ""
+    m_div = re.search(r"\n(─{2,}[^\n]*─{2,})\n", body)
+    if m_div:
+        hint_label = m_div.group(1).strip()
+        hint = body[m_div.end():]
+        body = body[:m_div.start()]
+    else:
+        m_div2 = re.match(r"^(─{2,}[^\n]*─{2,})\n", body)
+        if m_div2:
+            hint_label = m_div2.group(1).strip()
+            hint = body[m_div2.end():]
+            body = ""
     # Skip diff when score is 0 — the original was a different language, so
     # every token is "changed" and the highlight is just noise.
     if score == 0 or not body.strip():
@@ -477,7 +502,12 @@ else:
         out = f"{head} {joined}"
 
     if hint:
-        out += f"\n{HINT}→ {hint.rstrip()}{RESET}"
+        lines = []
+        if hint_label:
+            lines.append(hint_label)
+        lines.extend(hint.rstrip().split("\n"))
+        colored = "\n".join(f"{HINT}{ln}{RESET}" for ln in lines if ln.strip() or True)
+        out += f"\n{colored}"
 
 print(json.dumps({"systemMessage": "\n" + out}, ensure_ascii=False))
 ')"
