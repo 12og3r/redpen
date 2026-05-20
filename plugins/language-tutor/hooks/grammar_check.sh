@@ -168,6 +168,13 @@ if [[ "$LANGUAGE" == "spanish" ]]; then
      inicio de la oración. Si el usuario escribió la primera letra en
      minúscula, mantenla en minúscula al reescribir. Una minúscula al inicio
      NO es un error — no la 'arregles' ni bajes la puntuación por eso.
+   - **La puntuación SÍ se sigue corrigiendo.** Esta regla de mayúsculas
+     aplica SOLO a la capitalización de letras — NO se extiende a la
+     puntuación. La puntuación faltante o incorrecta (puntos, comas, signos
+     de interrogación/exclamación de apertura y cierre ¿? ¡!, apóstrofos,
+     etc.) DEBE añadirse o corregirse en la reescritura, igual que cualquier
+     otro error gramatical. No 'preserves' un punto que falta como sí
+     preservas una minúscula inicial.
 
 Formato de salida — EXACTAMENTE tres líneas:
 [<puntuación>] <mensaje corregido — o el texto original sin cambios si la puntuación es 100>
@@ -351,6 +358,12 @@ else
      rewrite. Lowercase sentence starts are NOT errors — do not 'fix' them
      and do not let them lower the score. (The pronoun 'I' is still always
      capitalized; that's lexical, not sentence-position.)
+   - **Punctuation IS still corrected.** This casing rule applies ONLY to
+     letter casing — it does NOT extend to punctuation. Missing or wrong
+     punctuation (periods, commas, question marks, apostrophes in
+     contractions like don't/it's, etc.) MUST still be added or fixed in
+     the rewrite, just like any other grammar issue. Do not 'preserve' a
+     missing period the way you preserve a lowercase start.
 
 Output format — EXACTLY three lines:
 [<score>] <corrected message — or the original text unchanged if score is 100>
