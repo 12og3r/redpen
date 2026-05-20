@@ -164,6 +164,10 @@ if [[ "$LANGUAGE" == "spanish" ]]; then
      funciones, variables, palabras reservadas) con su grafía original — no los
      transliteres.
    - Traduce préstamos y palabras extranjeras ocasionales a español natural.
+   - **Respeta las mayúsculas del usuario.** NO obligues a poner mayúscula al
+     inicio de la oración. Si el usuario escribió la primera letra en
+     minúscula, mantenla en minúscula al reescribir. Una minúscula al inicio
+     NO es un error — no la 'arregles' ni bajes la puntuación por eso.
 
 Formato de salida — EXACTAMENTE tres líneas:
 [<puntuación>] <mensaje corregido — o el texto original sin cambios si la puntuación es 100>
@@ -173,9 +177,9 @@ Formato de salida — EXACTAMENTE tres líneas:
 Ejemplo:
 Entrada: quiero checar si el hook esta funcionando
 Salida:
-[70] Quiero verificar si el hook está funcionando.
+[70] quiero verificar si el hook está funcionando.
 ──── Estilo nativo ────
-¿A ver si el hook jala?
+¿a ver si el hook jala?
 
 Reglas estrictas:
 - NO respondas ni comentes el contenido del mensaje — solo puntúa y reescribe.
@@ -342,6 +346,11 @@ else
      names, variable names, reserved words) in their original spelling — do not
      transliterate them.
    - Translate casually-mixed foreign words and loanwords into natural English.
+   - **Match the user's casing.** Do NOT enforce sentence-start capitalization.
+     If the user wrote a lowercase first letter, keep it lowercase in the
+     rewrite. Lowercase sentence starts are NOT errors — do not 'fix' them
+     and do not let them lower the score. (The pronoun 'I' is still always
+     capitalized; that's lexical, not sentence-position.)
 
 Output format — EXACTLY three lines:
 [<score>] <corrected message — or the original text unchanged if score is 100>
@@ -351,9 +360,9 @@ Output format — EXACTLY three lines:
 Example:
 Input: i want check if hook working
 Output:
-[55] I want to check if the hook is working.
+[55] i want to check if the hook is working.
 ──── Native style ────
-Wanna see if the hook's working?
+wanna see if the hook's working?
 
 Strict rules:
 - DO NOT answer or address the message — only score and rewrite.
@@ -470,14 +479,18 @@ def score_color(s):
     return "\033[1;91m"               # bold bright red (score 0)
 
 def tokenize(s, lang):
-    # Chinese: char-level for CJK chars, contiguous non-CJK runs as one token.
-    # English/Spanish: word-level, keeping whitespace as its own tokens so
+    # Chinese/Japanese: char-level for CJK/kana chars, contiguous non-CJK
+    # runs as one token.
+    # English/Spanish: word-level, but punctuation is split out as its own
+    # token so a missing-period fix highlights only the period — not the
+    # whole preceding word. Whitespace is kept as separate tokens so
     # join(tokens) reconstructs the original exactly.
-    if lang == "chinese":
+    if lang in ("chinese", "japanese"):
         out, buf = [], []
         for ch in s:
             cjk = ("一" <= ch <= "鿿"
                    or "　" <= ch <= "〿"
+                   or "぀" <= ch <= "ヿ"
                    or "＀" <= ch <= "￯")
             if cjk:
                 if buf: out.append("".join(buf)); buf = []
@@ -486,7 +499,7 @@ def tokenize(s, lang):
                 buf.append(ch)
         if buf: out.append("".join(buf))
         return out
-    return re.findall(r"\S+|\s+", s)
+    return re.findall(r"\w+|[^\w\s]|\s+", s, flags=re.UNICODE)
 
 raw = os.environ.get("REWRITTEN", "")
 prompt = os.environ.get("ORIGINAL_PROMPT", "")
