@@ -606,12 +606,24 @@ else:
         out = f"{head} {joined}"
 
     if hint:
+        # Per-token color wrap (not whole-line wrap). The Claude Code
+        # systemMessage renderer drops ANSI styling across terminal-wrap
+        # boundaries, so a long single-line hint shows yellow only on the
+        # first wrapped row. Wrapping every token individually means each
+        # word carries its own color, and wrapping no longer breaks it —
+        # the body diff above already relies on the same trick.
+        def color_line(ln):
+            if not ln:
+                return ""
+            return "".join(
+                f"{HINT}{tok}{RESET}" if tok.strip() else tok
+                for tok in tokenize(ln, language)
+            )
         lines = []
         if hint_label:
-            lines.append(hint_label)
-        lines.extend(hint.rstrip().split("\n"))
-        colored = "\n".join(f"{HINT}{ln}{RESET}" for ln in lines if ln.strip() or True)
-        out += f"\n{colored}"
+            lines.append(color_line(hint_label))
+        lines.extend(color_line(ln) for ln in hint.rstrip().split("\n"))
+        out += "\n" + "\n".join(lines)
 
 print(json.dumps({"systemMessage": "\n" + out}, ensure_ascii=False))
 ')"
