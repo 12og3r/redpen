@@ -37,9 +37,11 @@ the four languages above.)
 - question: `Which Claude model should the plugin use for rewriting? Pick a family below, or choose Other to enter a specific model id (e.g. claude-haiku-4-5-20251001).`
 - header: `Model`
 - multiSelect: false
-- options (exactly these three, in this order; append ` (Recommended)` to whichever
-  one matches `CURRENT_MODEL` so the user can see what is currently selected.
-  If `CURRENT_MODEL` is unset/empty, append ` (Recommended)` to `Sonnet`):
+- options (exactly these three, in this order; ALWAYS append ` (Recommended)`
+  to `Sonnet`, regardless of `CURRENT_MODEL`. Sonnet is the objectively
+  recommended choice for this plugin — fastest in practice and balanced
+  quality. Do NOT use `(Recommended)` to indicate the current selection;
+  it is a recommendation, not a state marker):
   - `Sonnet` — Balanced quality and latency. Fastest in practice (no forced thinking).
   - `Haiku` — Cheapest, but slower than Sonnet on this task (Haiku 4.5 forces adaptive thinking → ~3× more tokens, ~3× the wall-clock).
   - `Opus` — Smartest, most expensive.
