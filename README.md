@@ -122,6 +122,8 @@ To avoid burning model calls on inputs that aren't natural-language prose:
    • --strict-mcp-config         skip default MCP config
    • --mcp-config '{...}'        empty MCP config
    • --no-session-persistence    no transcript .jsonl
+   • --tools ""                  no tool defs (drops ~11k input tokens)
+   • --effort low                skip the model's internal thinking block
    • </dev/null                  skip 3s stdin wait
    + CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
    + CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
@@ -164,15 +166,16 @@ Key design choices:
 
 ## Limitations
 
-- Adds ~2–9s of latency before your prompt reaches the model (median ~3.4s
-  with Sonnet on the OAuth/Pro auth path, measured over 100 calls; was ~10.5s
-  median with Haiku, because Haiku 4.5 forces adaptive extended thinking and
-  emits ~7× more tokens per call). On `ANTHROPIC_API_KEY` auth, swapping in
-  `--bare` would drop this further, but that path is disabled here so
-  subscription users still work.
-- Costs one Sonnet call per prompt. Sonnet output is short (median ~70 tokens
-  vs Haiku's ~660), so token spend is comparable or lower despite the
-  higher per-token rate.
+- Adds ~1.3–6s of latency before your prompt reaches the model (median ~2.2s
+  with Sonnet on the OAuth/Pro auth path, measured over a 35-prompt bench
+  varying from 7 to 523 chars). Latency scales mildly with prompt length
+  (short ~1.8s → x-long ~5.6s). Haiku is NOT faster here — Haiku 4.5 forces
+  adaptive extended thinking even with `--effort low`, occasionally blowing
+  up to 1000+ output tokens, so Sonnet stays the default.
+- Costs ~$0.002–0.006 per call. With `--tools ""` the input drops below
+  Sonnet's prompt-cache threshold for English/Spanish (so no caching, but
+  also no cache-creation premium). Longer system prompts like Chinese/Japanese
+  still trigger caching automatically.
 - Spanish vs English vs other Latin-script languages are not character-level
   distinguishable; for Spanish mode, the model decides Spanish-ness from
   vocabulary and grammar.
