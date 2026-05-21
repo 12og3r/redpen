@@ -558,9 +558,18 @@ else:
             hint = body[m_div2.end():]
             body = ""
     # Skip diff when score is 0 — the original was a different language, so
-    # every token is "changed" and the highlight is just noise.
+    # every token is "changed" and the highlight is just noise. Color the
+    # whole rewrite green (per-token, so terminal wrap does not drop ANSI)
+    # since semantically every word is an "addition" vs. the original.
     if score == 0 or not body.strip():
-        out = f"{head} {body}".rstrip()
+        if score == 0 and body.strip():
+            colored = "".join(
+                f"{ADDED}{tok}{RESET}" if tok.strip() else tok
+                for tok in tokenize(body, language)
+            )
+            out = f"{head} {colored}".rstrip()
+        else:
+            out = f"{head} {body}".rstrip()
     else:
         # Render a single line (or the whole text) as a tokenized colored
         # diff. Whitespace tokens from `delete` blocks are dropped — emitting
