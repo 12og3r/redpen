@@ -15,9 +15,26 @@ Read `~/.claude/language-tutor.config`. Parse:
 
 Remember as `CURRENT_LANGUAGE`, `CURRENT_MODEL`, `CURRENT_SHOW_HINT`.
 
+**First-run case:** if the config file does NOT exist (this is the user's
+first time running setup), treat `CURRENT_LANGUAGE`, `CURRENT_MODEL`, and
+`CURRENT_SHOW_HINT` as ALL UNSET — do NOT substitute defaults for the
+purpose of the current-selection marker in Step 2. The defaults above only
+apply when writing the config in Step 4 if the user picks Other / blank.
+When the config is unset, no option should be marked with ✓.
+
 ## Step 2 — Ask the user (single AskUserQuestion call, three questions)
 
-Call `AskUserQuestion` ONCE with all three questions:
+Call `AskUserQuestion` ONCE with all three questions.
+
+**Current-selection marker (applies to ALL three questions below):** append
+` ✓` as a suffix to the option whose value matches the user's current config
+(`CURRENT_LANGUAGE` / `CURRENT_MODEL` / `CURRENT_SHOW_HINT`). This shows the
+user what they're currently on. The ✓ is purely a state marker — it is
+INDEPENDENT of `(Recommended)`, and both can appear on the same option
+(e.g. `Sonnet (Recommended) ✓` when sonnet is the current model). If the
+current model value doesn't match any of the three families (i.e. user has
+pinned a custom id via `Other` previously), don't mark any model option.
+When matching answers back in Step 3, ignore the trailing ` ✓`.
 
 **Question 1 — language**
 - question: `Which language do you want the language-tutor plugin to coach you on?`
@@ -55,8 +72,11 @@ model alias. See Step 3 for how that value is handled.)
 - question: `Show a second "native style" line with a more idiomatic rephrasing under each rewrite?`
 - header: `Native style`
 - multiSelect: false
-- options (append ` (Recommended)` to whichever matches `CURRENT_SHOW_HINT`; if
-  unset/empty, append it to `On`):
+- options (ALWAYS append ` (Recommended)` to `On`, regardless of
+  `CURRENT_SHOW_HINT`. The native-style line is the objectively recommended
+  setting for this plugin — it's where most of the learning value lives.
+  Do NOT use `(Recommended)` to indicate the current selection; it is a
+  recommendation, not a state marker):
   - `On` — Show the divider + native-style rephrasing line under each rewrite.
   - `Off` — Only show the scored rewrite line. No second line.
 

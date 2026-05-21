@@ -78,14 +78,21 @@ case "$PROMPT" in
 esac
 
 # --- Load user config -------------------------------------------------------
+# First-run guard: if the user has never run /language-tutor:setup, skip
+# rewriting entirely. The SessionStart hook is responsible for nudging the
+# user (or Claude) to run setup; without a config we shouldn't silently
+# coach in whichever language the defaults happen to be.
+CONFIG_FILE="${HOME}/.claude/language-tutor.config"
+if [[ ! -f "$CONFIG_FILE" ]]; then
+  log "skip: no config at $CONFIG_FILE — user needs to run /language-tutor:setup first"
+  exit 0
+fi
+
 LANGUAGE="english"
 MODEL="sonnet"
 SHOW_HINT="on"
-CONFIG_FILE="${HOME}/.claude/language-tutor.config"
-if [[ -r "$CONFIG_FILE" ]]; then
-  # shellcheck disable=SC1090
-  source "$CONFIG_FILE"
-fi
+# shellcheck disable=SC1090
+[[ -r "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
 SHOW_HINT="$(printf '%s' "$SHOW_HINT" | tr 'A-Z' 'a-z')"
 case "$SHOW_HINT" in off|false|0|no) SHOW_HINT="off" ;; *) SHOW_HINT="on" ;; esac
 LANGUAGE="$(printf '%s' "$LANGUAGE" | tr 'A-Z' 'a-z')"

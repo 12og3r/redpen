@@ -17,6 +17,38 @@ CACHE_DIR="${HOME}/.cache/language-tutor/v8"
 VERSION_FILE="${HOME}/.cache/language-tutor/v8.version"
 STAMP="${TMPDIR:-/tmp}/language-tutor-prewarm.stamp"
 
+CONFIG_FILE="${HOME}/.claude/language-tutor.config"
+
+# --- First-run setup nudge -------------------------------------------------
+# If the user has never configured the plugin, inject a SessionStart
+# additionalContext that instructs Claude to run /language-tutor:setup
+# immediately. This is the only way the plugin can "force" the slash
+# command — hooks cannot execute slash commands directly, but they can
+# add session context that strongly directs the next turn.
+if [[ ! -f "$CONFIG_FILE" ]]; then
+  log "first-run: no config at $CONFIG_FILE — instructing Claude to run /language-tutor:setup"
+  /usr/bin/python3 -c '
+import json, sys
+sys.stdout.write(json.dumps({
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": (
+      "<language-tutor-first-run>\n"
+      "The language-tutor plugin has not been configured yet "
+      "(no ~/.claude/language-tutor.config file exists). Before doing "
+      "anything else this session — including answering the user, "
+      "exploring code, or invoking any other tool — you MUST invoke the "
+      "/language-tutor:setup slash command via the Skill tool "
+      "(skill: \"language-tutor:setup\") to configure language, model, "
+      "and native-style hint. After setup completes, then proceed with "
+      "whatever the user originally asked.\n"
+      "</language-tutor-first-run>"
+    )
+  }
+}))
+'
+fi
+
 CLAUDE_BIN="$(command -v claude || true)"
 if [[ -z "$CLAUDE_BIN" ]]; then
   log "skip: claude not on PATH"
@@ -56,7 +88,6 @@ touch "$STAMP"
 
 # --- Load model from config (same logic as grammar_check.sh) ---------------
 MODEL="sonnet"
-CONFIG_FILE="${HOME}/.claude/language-tutor.config"
 # shellcheck disable=SC1090
 [[ -r "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
 
