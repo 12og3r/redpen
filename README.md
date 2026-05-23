@@ -180,6 +180,14 @@ Key design choices:
   Haiku to misjudge ~5% of clean English as score 0). Net result: Haiku is
   competitive with Sonnet on latency for this task — but still slightly
   noisier on scoring, so Sonnet stays the default.
+- **Opus gets a slim system prompt + Sonnet fallback.** When `MODEL=opus*`
+  and `LANGUAGE=english`, the hook swaps to a 4× shorter system prompt
+  (the verbose nuance / examples don't help Opus 4.7 follow the rules).
+  Bench: -62% cost, -34% p95 latency, -56% max latency, 0 false-zeros.
+  It also passes `--fallback-model sonnet` so when Opus is queue-overloaded
+  (the cause of its p95 long tail — not hidden thinking, which is already
+  off at `--effort low`) the request falls through to Sonnet rather than
+  wait. Quality is preserved because Sonnet is Opus-quality on this task.
 - Costs ~$0.002–0.006 per call. With `--tools ""` the input drops below
   Sonnet's prompt-cache threshold for English/Spanish (so no caching, but
   also no cache-creation premium). Longer system prompts like Chinese/Japanese
