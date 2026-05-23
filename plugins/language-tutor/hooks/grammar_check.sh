@@ -106,7 +106,21 @@ case "$LANGUAGE" in
     LANGUAGE="english"
     ;;
 esac
-log "language=$LANGUAGE model=${MODEL:-<follow /model>}"
+
+# Haiku detection — Haiku 4.5 forces adaptive extended thinking even with
+# `--effort low`, blowing up output to a median of 742 tokens (p95 3771) and
+# median latency to 9s (p95 32s) on the coach task. Setting
+# CLAUDE_CODE_DISABLE_THINKING=1 collapses that to ~30 output tokens and
+# ~0.9s median, but a naked disable causes the model to misjudge ~5% of
+# clean English as score 0 ("explain async/await briefly" → 0, etc.). The
+# fix is to force an in-output ANALYSIS reasoning line (see SYSTEM_INSTR
+# append below) — that pushes false-zero rate back to 0/100 with only
+# +150ms median latency. Bench: 100 prompts × 3 configs, see commit log.
+IS_HAIKU=0
+case "$(printf '%s' "$MODEL" | tr 'A-Z' 'a-z')" in
+  *haiku*) IS_HAIKU=1 ;;
+esac
+log "language=$LANGUAGE model=${MODEL:-<follow /model>} is_haiku=$IS_HAIKU"
 
 # --- Length-based skip ------------------------------------------------------
 # UserPromptSubmit hooks don't receive paste metadata from Claude Code, so we
@@ -394,6 +408,30 @@ Strict rules:
 - Output ONLY the three lines. Nothing else."
 fi
 
+# Haiku-only addendum: force a visible ANALYSIS reasoning line before the
+# score line. Without this, Haiku in DISABLE_THINKING mode misjudges ~5%
+# of clean English as score 0 (the model takes the "ANY foreign character
+# → 0" rule and applies it sloppily). Forcing it to first commit to a
+# yes/no answer on the foreign-character check restores correctness.
+# Language-agnostic wording — model uses the target language from above.
+if (( IS_HAIKU )) && [[ "$SHOW_HINT" != "off" ]]; then
+  SYSTEM_INSTR="$SYSTEM_INSTR
+
+ADDITIONAL HAIKU REQUIREMENT (overrides the output format above):
+Before the score line, output ONE extra line starting with 'ANALYSIS:' that briefly answers, in order:
+  (1) does the text contain characters from a language other than the target language? (yes/no)
+  (2) any visible typos or grammar issues? (brief note or 'none')
+Keep ANALYSIS to ONE line, max 25 words. Then continue with the score line, divider, and colloquial line as previously specified.
+
+Updated output: EXACTLY FOUR lines —
+ANALYSIS: <one-line check>
+[<score>] <corrected text>
+<the divider line in the target language>
+<the colloquial line>
+
+IMPORTANT: if ANALYSIS says 'no' to non-target characters, the score MUST be greater than 0. The score-0-for-foreign rule applies ONLY when ANALYSIS detected a non-target character."
+fi
+
 # Wrap the user message in unambiguous "this is text to rewrite, not a
 # question to answer" framing — belt-and-suspenders alongside --system-prompt
 # so the model's helpful-assistant tendencies can't hijack the call.
@@ -471,6 +509,9 @@ log "clean_cwd=${CLEAN_CWD:-<none, using current>}"
 # for stdin data before proceeding, even though we passed the prompt as an arg.
 REWRITTEN="$(
   if [[ -n "$CLEAN_CWD" ]]; then cd "$CLEAN_CWD"; fi
+  # Haiku gets one extra env var to disable adaptive extended thinking — see
+  # the IS_HAIKU comment near the top for the bench numbers driving this.
+  if (( IS_HAIKU )); then export CLAUDE_CODE_DISABLE_THINKING=1; fi
   LANGUAGE_TUTOR_ACTIVE=1 \
   NODE_COMPILE_CACHE="${HOME}/.cache/language-tutor/v8" \
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
@@ -536,6 +577,15 @@ def tokenize(s, lang):
 raw = os.environ.get("REWRITTEN", "")
 prompt = os.environ.get("ORIGINAL_PROMPT", "")
 language = os.environ.get("LT_LANGUAGE", "english")
+
+# Haiku-only: model emits a leading "ANALYSIS: ..." line before the score
+# (see IS_HAIKU block in grammar_check.sh) to prevent misjudging clean
+# English as score 0. The user does not need to see it — strip it before
+# rendering. NOTE: avoid apostrophes here — this comment lives inside a
+# single-quoted bash string and a stray apostrophe will break the script.
+if raw.startswith("ANALYSIS"):
+    _, _, raw = raw.partition("\n")
+    raw = raw.lstrip()
 
 m = re.match(r"^\s*\[(\d+)\]\s*(.*)$", raw, re.DOTALL)
 if not m:
