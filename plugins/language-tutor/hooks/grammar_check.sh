@@ -458,11 +458,17 @@ Keep ANALYSIS to ONE line, max 25 words. Then continue with the score line, divi
 
 Updated output: EXACTLY FOUR lines —
 ANALYSIS: <one-line check>
-[<score>] <corrected text>
+[<score>] <rewrite, WRITTEN IN THE TARGET LANGUAGE>
 <the divider line in the target language>
-<the colloquial line>
+<the colloquial line, ALSO IN THE TARGET LANGUAGE>
 
-IMPORTANT: if ANALYSIS says 'no' to non-target characters, the score MUST be greater than 0. The score-0-for-foreign rule applies ONLY when ANALYSIS detected a non-target character."
+IMPORTANT — language of the rewrite:
+- Lines 2 and 4 (rewrite + colloquial) MUST be in the target language, ALWAYS.
+- When the original is in a different language (ANALYSIS says 'yes' to non-target characters), TRANSLATE the meaning into the target language for both lines. Do NOT echo the original back — that defeats the coaching purpose. Score 0 means 'wrong language', not 'skip the rewrite'.
+- The divider on line 3 is fixed text; output the target-language divider exactly as specified by the main system prompt above.
+
+IMPORTANT — score validity:
+- If ANALYSIS says 'no' to non-target characters, the score MUST be greater than 0. The score-0-for-foreign rule applies ONLY when ANALYSIS detected a non-target character."
 fi
 
 # Wrap the user message in unambiguous "this is text to rewrite, not a
