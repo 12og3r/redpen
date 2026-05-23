@@ -169,9 +169,17 @@ Key design choices:
 - Adds ~1.3–6s of latency before your prompt reaches the model (median ~2.2s
   with Sonnet on the OAuth/Pro auth path, measured over a 35-prompt bench
   varying from 7 to 523 chars). Latency scales mildly with prompt length
-  (short ~1.8s → x-long ~5.6s). Haiku is NOT faster here — Haiku 4.5 forces
-  adaptive extended thinking even with `--effort low`, occasionally blowing
-  up to 1000+ output tokens, so Sonnet stays the default.
+  (short ~1.8s → x-long ~5.6s).
+- **Haiku gets a special-case optimization stack.** Haiku 4.5 forces adaptive
+  extended thinking even with `--effort low` — out of the box, median latency
+  is 9s (p95 32s) and output explodes to 742 tokens median (p95 3771). When
+  `MODEL=haiku*`, the hook sets `CLAUDE_CODE_DISABLE_THINKING=1` and appends
+  a visible `ANALYSIS:` reasoning line to the system prompt. That collapses
+  median latency to ~1s (p95 1.9s) and median output to 60 tokens, while
+  keeping the false-zero rate at 0/100 (a naked `DISABLE_THINKING` causes
+  Haiku to misjudge ~5% of clean English as score 0). Net result: Haiku is
+  competitive with Sonnet on latency for this task — but still slightly
+  noisier on scoring, so Sonnet stays the default.
 - Costs ~$0.002–0.006 per call. With `--tools ""` the input drops below
   Sonnet's prompt-cache threshold for English/Spanish (so no caching, but
   also no cache-creation premium). Longer system prompts like Chinese/Japanese
