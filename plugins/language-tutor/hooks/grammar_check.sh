@@ -117,10 +117,12 @@ esac
 # append below) — that pushes false-zero rate back to 0/100 with only
 # +150ms median latency. Bench: 100 prompts × 3 configs, see commit log.
 IS_HAIKU=0
+IS_OPUS=0
 case "$(printf '%s' "$MODEL" | tr 'A-Z' 'a-z')" in
   *haiku*) IS_HAIKU=1 ;;
+  *opus*)  IS_OPUS=1 ;;
 esac
-log "language=$LANGUAGE model=${MODEL:-<follow /model>} is_haiku=$IS_HAIKU"
+log "language=$LANGUAGE model=${MODEL:-<follow /model>} is_haiku=$IS_HAIKU is_opus=$IS_OPUS"
 
 # --- Length-based skip ------------------------------------------------------
 # UserPromptSubmit hooks don't receive paste metadata from Claude Code, so we
@@ -408,6 +410,37 @@ Strict rules:
 - Output ONLY the three lines. Nothing else."
 fi
 
+# Opus-only: swap to a 4× shorter system prompt. Opus 4.7 follows rules
+# tightly without needing the verbose nuance / examples — bench (50 prompts
+# vs the full English prompt) showed cost -62%, p95 latency -34%, max
+# latency -56%, and zero quality regression (0 false-zeros vs 1/50 with
+# the full prompt). English mode only — bench was English-only and the
+# other languages still benefit from the verbose example-rich prompts.
+if (( IS_OPUS )) && [[ "$LANGUAGE" == "english" ]]; then
+  SYSTEM_INSTR="You are an English coach. For each user message:
+
+1. Score 0-100:
+   - 100 = perfect, idiomatic
+   - 80-99 = minor (article/preposition/tense)
+   - 50-79 = clear errors, still readable
+   - 1-49 = broken
+   - 0 = contains ANY non-English character (CJK etc.). Digits, punctuation, whitespace, emoji do NOT count as foreign.
+
+2. Rewrite into casual, idiomatic English:
+   - Decode intent first — if a word looks misspelled or garbled, reconstruct what the user most likely meant. Never silently drop a word.
+   - Preserve meaning, file paths, code identifiers, brand/library names (Vue.js, React, Kotlin, TikTok) verbatim.
+   - Match the user's casing — keep lowercase sentence starts. Punctuation IS still fixed.
+   - Sound spoken: use contractions, casual phrasing. Avoid formal/textbook tone.
+   - Preserve line breaks exactly: same number of lines, same correspondence.
+
+Output EXACTLY three lines:
+[<score>] <corrected text — or original unchanged if 100>
+──── Native style ────
+<colloquial native phrasing>
+
+No commentary, no labels, no markdown, no code fences."
+fi
+
 # Haiku-only addendum: force a visible ANALYSIS reasoning line before the
 # score line. Without this, Haiku in DISABLE_THINKING mode misjudges ~5%
 # of clean English as score 0 (the model takes the "ANY foreign character
@@ -484,6 +517,15 @@ ARGS=(
 )
 if [[ -n "$MODEL" ]]; then
   ARGS+=(--model "$MODEL")
+  # Opus has a real p95 long tail on this task (~7s observed in bench)
+  # from server-side queueing, not hidden thinking. Falling through to
+  # Sonnet when Opus is overloaded keeps the request flowing — Sonnet
+  # is Opus-quality on this coach task (verified via cross-model bench).
+  # Haiku/Sonnet don't get a fallback: their throughput is already good
+  # and falling further would change behaviour more than it helps.
+  if (( IS_OPUS )); then
+    ARGS+=(--fallback-model sonnet)
+  fi
 fi
 
 # Clean cwd for the headless call — escape project-level CLAUDE.md and any
