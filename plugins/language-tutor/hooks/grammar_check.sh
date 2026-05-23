@@ -458,11 +458,21 @@ Keep ANALYSIS to ONE line, max 25 words. Then continue with the score line, divi
 
 Updated output: EXACTLY FOUR lines —
 ANALYSIS: <one-line check>
-[<score>] <corrected text>
+[<score>] <rewrite, WRITTEN IN THE TARGET LANGUAGE>
 <the divider line in the target language>
-<the colloquial line>
+<the colloquial line, ALSO IN THE TARGET LANGUAGE>
 
-IMPORTANT: if ANALYSIS says 'no' to non-target characters, the score MUST be greater than 0. The score-0-for-foreign rule applies ONLY when ANALYSIS detected a non-target character."
+IMPORTANT — output discipline:
+- You MUST always produce these four lines, in this order, no matter what. Never refuse. Never explain. Never apologize. Never output a paragraph instead of the four lines. There is no scenario where 'I cannot rewrite this' is a valid response — coaching is not optional.
+- If the input is empty, garbled, mixed-language, or otherwise unusual, STILL output the four-line format. Use your best-effort interpretation of the user's intent for the rewrite. If you genuinely cannot guess, copy the original prompt translated word-for-word into the target language.
+
+IMPORTANT — language of the rewrite:
+- Lines 2 and 4 (rewrite + colloquial) MUST be in the target language, ALWAYS.
+- When the original is in a different language (ANALYSIS says 'yes' to non-target characters), TRANSLATE the meaning into the target language for both lines. Do NOT echo the original back — that defeats the coaching purpose. Score 0 means 'wrong language', not 'skip the rewrite'.
+- The divider on line 3 is fixed text; output the target-language divider exactly as specified by the main system prompt above.
+
+IMPORTANT — score validity:
+- If ANALYSIS says 'no' to non-target characters, the score MUST be greater than 0. The score-0-for-foreign rule applies ONLY when ANALYSIS detected a non-target character."
 fi
 
 # Wrap the user message in unambiguous "this is text to rewrite, not a
@@ -631,8 +641,12 @@ if raw.startswith("ANALYSIS"):
 
 m = re.match(r"^\s*\[(\d+)\]\s*(.*)$", raw, re.DOTALL)
 if not m:
-    out = raw
-else:
+    # Model failed to follow the [N] xxx format — usually a Haiku refusal.
+    # Treat as score 0 and prepend the score so the existing score-0
+    # rendering path (which colors the body green) takes over.
+    raw = f"[0] {raw}"
+    m = re.match(r"^\s*\[(\d+)\]\s*(.*)$", raw, re.DOTALL)
+if m:
     score = int(m.group(1))
     body = m.group(2)
     head = f"{score_color(score)}[{score}]{RESET}"
