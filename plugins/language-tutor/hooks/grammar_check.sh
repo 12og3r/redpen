@@ -462,6 +462,10 @@ ANALYSIS: <one-line check>
 <the divider line in the target language>
 <the colloquial line, ALSO IN THE TARGET LANGUAGE>
 
+IMPORTANT — output discipline:
+- You MUST always produce these four lines, in this order, no matter what. Never refuse. Never explain. Never apologize. Never output a paragraph instead of the four lines. There is no scenario where 'I cannot rewrite this' is a valid response — coaching is not optional.
+- If the input is empty, garbled, mixed-language, or otherwise unusual, STILL output the four-line format. Use your best-effort interpretation of the user's intent for the rewrite. If you genuinely cannot guess, copy the original prompt translated word-for-word into the target language.
+
 IMPORTANT — language of the rewrite:
 - Lines 2 and 4 (rewrite + colloquial) MUST be in the target language, ALWAYS.
 - When the original is in a different language (ANALYSIS says 'yes' to non-target characters), TRANSLATE the meaning into the target language for both lines. Do NOT echo the original back — that defeats the coaching purpose. Score 0 means 'wrong language', not 'skip the rewrite'.
@@ -637,7 +641,14 @@ if raw.startswith("ANALYSIS"):
 
 m = re.match(r"^\s*\[(\d+)\]\s*(.*)$", raw, re.DOTALL)
 if not m:
-    out = raw
+    # Model failed to follow the [N] xxx format — usually a Haiku refusal
+    # ("Text contains non-English characters", etc.). Wrap the raw text in
+    # an obvious "[?]" marker so the user sees the score is unparseable
+    # rather than thinking the model output is the rewrite. Keep the raw
+    # body for debug, but flag it clearly.
+    WARN = "\033[1;91m"   # bold bright red — same as score=0
+    GREY = "\033[2;37m"   # dim grey for the raw body
+    out = f"{WARN}[?]{RESET} {GREY}(model returned non-standard output){RESET} {raw}"
 else:
     score = int(m.group(1))
     body = m.group(2)
