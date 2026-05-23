@@ -641,15 +641,12 @@ if raw.startswith("ANALYSIS"):
 
 m = re.match(r"^\s*\[(\d+)\]\s*(.*)$", raw, re.DOTALL)
 if not m:
-    # Model failed to follow the [N] xxx format — usually a Haiku refusal
-    # ("Text contains non-English characters", etc.). Wrap the raw text in
-    # an obvious "[?]" marker so the user sees the score is unparseable
-    # rather than thinking the model output is the rewrite. Keep the raw
-    # body for debug, but flag it clearly.
-    WARN = "\033[1;91m"   # bold bright red — same as score=0
-    GREY = "\033[2;37m"   # dim grey for the raw body
-    out = f"{WARN}[?]{RESET} {GREY}(model returned non-standard output){RESET} {raw}"
-else:
+    # Model failed to follow the [N] xxx format — usually a Haiku refusal.
+    # Treat as score 0 and prepend the score so the existing score-0
+    # rendering path (which colors the body green) takes over.
+    raw = f"[0] {raw}"
+    m = re.match(r"^\s*\[(\d+)\]\s*(.*)$", raw, re.DOTALL)
+if m:
     score = int(m.group(1))
     body = m.group(2)
     head = f"{score_color(score)}[{score}]{RESET}"
