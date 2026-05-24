@@ -472,7 +472,12 @@ IMPORTANT — language of the rewrite:
 - The divider on line 3 is fixed text; output the target-language divider exactly as specified by the main system prompt above.
 
 IMPORTANT — score validity:
-- If ANALYSIS says 'no' to non-target characters, the score MUST be greater than 0. The score-0-for-foreign rule applies ONLY when ANALYSIS detected a non-target character."
+- If ANALYSIS says 'no' to non-target characters, the score MUST be greater than 0. The score-0-for-foreign rule applies ONLY when ANALYSIS detected a non-target character.
+
+IMPORTANT — match the user's casing:
+- If the original starts with a lowercase letter, the rewrite MUST also start with a lowercase letter. Do NOT capitalize sentence-starts. Lowercase starts are NOT errors — they are the user's voice.
+- The pronoun 'I' is the ONLY exception: always capitalize it.
+- This rule applies ONLY to letter casing. Punctuation (periods, question marks, apostrophes in contractions like don't/it's) MUST still be added or fixed."
 fi
 
 # Wrap the user message in unambiguous "this is text to rewrite, not a
