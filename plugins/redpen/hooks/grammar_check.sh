@@ -11,13 +11,13 @@
 
 set -u
 
-LOG_FILE="${HOME}/.claude/language-tutor.log"
+LOG_FILE="${HOME}/.claude/redpen.log"
 log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG_FILE"; }
-log "==== hook fired (pid=$$, recursion=${LANGUAGE_TUTOR_ACTIVE:-0}) ===="
+log "==== hook fired (pid=$$, recursion=${REDPEN_ACTIVE:-0}) ===="
 
 # Recursion guard: our own `claude -p` invocation may re-trigger this hook
 # in the nested headless session. Bail out fast.
-if [[ "${LANGUAGE_TUTOR_ACTIVE:-0}" == "1" ]]; then
+if [[ "${REDPEN_ACTIVE:-0}" == "1" ]]; then
   log "skip: recursion guard"
   exit 0
 fi
@@ -78,13 +78,13 @@ case "$PROMPT" in
 esac
 
 # --- Load user config -------------------------------------------------------
-# First-run guard: if the user has never run /language-tutor:setup, skip
+# First-run guard: if the user has never run /redpen:setup, skip
 # rewriting entirely. The SessionStart hook is responsible for nudging the
 # user (or Claude) to run setup; without a config we shouldn't silently
 # coach in whichever language the defaults happen to be.
-CONFIG_FILE="${HOME}/.claude/language-tutor.config"
+CONFIG_FILE="${HOME}/.claude/redpen.config"
 if [[ ! -f "$CONFIG_FILE" ]]; then
-  log "skip: no config at $CONFIG_FILE — user needs to run /language-tutor:setup first"
+  log "skip: no config at $CONFIG_FILE — user needs to run /redpen:setup first"
   exit 0
 fi
 
@@ -129,7 +129,7 @@ log "language=$LANGUAGE model=${MODEL:-<follow /model>} is_haiku=$IS_HAIKU is_op
 # can't isolate user-typed prose from pasted code/logs/transcripts. As a
 # pragmatic proxy, skip anything over a character cap — long prompts almost
 # always contain pasted material we don't want to rewrite. Override via the
-# MAX_PROMPT_CHARS env var or in ~/.claude/language-tutor.config.
+# MAX_PROMPT_CHARS env var or in ~/.claude/redpen.config.
 # ${#PROMPT} returns Unicode code-point count under a UTF-8 locale, so CJK
 # characters count as 1 each (matching what the user perceives).
 MAX_PROMPT_CHARS="${MAX_PROMPT_CHARS:-2000}"
@@ -569,8 +569,8 @@ REWRITTEN="$(
   # Haiku gets one extra env var to disable adaptive extended thinking — see
   # the IS_HAIKU comment near the top for the bench numbers driving this.
   if (( IS_HAIKU )); then export CLAUDE_CODE_DISABLE_THINKING=1; fi
-  LANGUAGE_TUTOR_ACTIVE=1 \
-  NODE_COMPILE_CACHE="${HOME}/.cache/language-tutor/v8" \
+  REDPEN_ACTIVE=1 \
+  NODE_COMPILE_CACHE="${HOME}/.cache/redpen/v8" \
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
   CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 \
   CLAUDE_CODE_DISABLE_CLAUDE_MDS=1 \

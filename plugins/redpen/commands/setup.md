@@ -1,14 +1,14 @@
 ---
-description: Configure the language-tutor plugin (language + model).
+description: Configure the redpen plugin (language + model).
 allowed-tools: Read, Write, AskUserQuestion
 ---
 
-The user invoked `/language-tutor:setup`. Follow these steps EXACTLY. Do not
+The user invoked `/redpen:setup`. Follow these steps EXACTLY. Do not
 explore the codebase, do not run other commands, do not summarise.
 
 ## Step 1 — Read current config
 
-Read `~/.claude/language-tutor.config`. Parse:
+Read `~/.claude/redpen.config`. Parse:
 - `LANGUAGE=<...>` (default: `english`)
 - `MODEL=<...>` (default: `sonnet`)
 - `SHOW_HINT=<on|off>` (default: `on`)
@@ -37,7 +37,7 @@ pinned a custom id via `Other` previously), don't mark any model option.
 When matching answers back in Step 3, ignore the trailing ` ✓`.
 
 **Question 1 — language**
-- question: `Which language do you want the language-tutor plugin to coach you on?`
+- question: `Which language do you want the redpen plugin to coach you on?`
 - header: `Language`
 - multiSelect: false
 - options (only these four; if user picks the auto-added Other, fall back to English):
@@ -117,11 +117,11 @@ plugin doesn't list.
 
 ## Step 4 — Write the new config
 
-Use `Write` to overwrite `~/.claude/language-tutor.config` with EXACTLY this
+Use `Write` to overwrite `~/.claude/redpen.config` with EXACTLY this
 content (substitute the chosen values):
 
 ```
-# language-tutor plugin config — sourced by the UserPromptSubmit hook.
+# redpen plugin config — sourced by the UserPromptSubmit hook.
 #
 # Supported LANGUAGE values:
 #   english | chinese | spanish | japanese
