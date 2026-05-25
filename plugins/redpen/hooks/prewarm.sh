@@ -4,45 +4,45 @@
 #
 # Pays ~$0.0001 for one no-op Haiku call. All subsequent grammar_check.sh
 # invocations in this session — and future sessions, until claude is upgraded —
-# read precompiled bytecode from ~/.cache/language-tutor/v8 instead of
+# read precompiled bytecode from ~/.cache/redpen/v8 instead of
 # re-parsing the bundle.
 
 set -u
 
-LOG_FILE="${HOME}/.claude/language-tutor.log"
+LOG_FILE="${HOME}/.claude/redpen.log"
 mkdir -p "$(dirname "$LOG_FILE")"
 log() { printf '[%s] prewarm: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG_FILE"; }
 
-CACHE_DIR="${HOME}/.cache/language-tutor/v8"
-VERSION_FILE="${HOME}/.cache/language-tutor/v8.version"
-STAMP="${TMPDIR:-/tmp}/language-tutor-prewarm.stamp"
+CACHE_DIR="${HOME}/.cache/redpen/v8"
+VERSION_FILE="${HOME}/.cache/redpen/v8.version"
+STAMP="${TMPDIR:-/tmp}/redpen-prewarm.stamp"
 
-CONFIG_FILE="${HOME}/.claude/language-tutor.config"
+CONFIG_FILE="${HOME}/.claude/redpen.config"
 
 # --- First-run setup nudge -------------------------------------------------
 # If the user has never configured the plugin, inject a SessionStart
-# additionalContext that instructs Claude to run /language-tutor:setup
+# additionalContext that instructs Claude to run /redpen:setup
 # immediately. This is the only way the plugin can "force" the slash
 # command — hooks cannot execute slash commands directly, but they can
 # add session context that strongly directs the next turn.
 if [[ ! -f "$CONFIG_FILE" ]]; then
-  log "first-run: no config at $CONFIG_FILE — instructing Claude to run /language-tutor:setup"
+  log "first-run: no config at $CONFIG_FILE — instructing Claude to run /redpen:setup"
   /usr/bin/python3 -c '
 import json, sys
 sys.stdout.write(json.dumps({
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
     "additionalContext": (
-      "<language-tutor-first-run>\n"
-      "The language-tutor plugin has not been configured yet "
-      "(no ~/.claude/language-tutor.config file exists). Before doing "
+      "<redpen-first-run>\n"
+      "The redpen plugin has not been configured yet "
+      "(no ~/.claude/redpen.config file exists). Before doing "
       "anything else this session — including answering the user, "
       "exploring code, or invoking any other tool — you MUST invoke the "
-      "/language-tutor:setup slash command via the Skill tool "
-      "(skill: \"language-tutor:setup\") to configure language, model, "
+      "/redpen:setup slash command via the Skill tool "
+      "(skill: \"redpen:setup\") to configure language, model, "
       "and native-style hint. After setup completes, then proceed with "
       "whatever the user originally asked.\n"
-      "</language-tutor-first-run>"
+      "</redpen-first-run>"
     )
   }
 }))
@@ -98,7 +98,7 @@ log "spawning background warmup (model=${MODEL:-<follow /model>}, cache=$CACHE_D
 # the identical code path. Subshell + disown detaches it so this hook returns
 # immediately and SessionStart doesn't block.
 (
-  export LANGUAGE_TUTOR_ACTIVE=1
+  export REDPEN_ACTIVE=1
   export NODE_COMPILE_CACHE="$CACHE_DIR"
   export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
   export CLAUDE_CODE_DISABLE_AUTO_MEMORY=1

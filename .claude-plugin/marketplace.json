@@ -1,6 +1,6 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "language-tutor",
+  "name": "redpen",
   "version": "1.0.0",
   "description": "Personal language-learning helpers for Claude Code (English / Chinese / Spanish).",
   "owner": {
@@ -8,9 +8,9 @@
   },
   "plugins": [
     {
-      "name": "language-tutor",
+      "name": "redpen",
       "description": "Per-prompt score + rewrite in your chosen target language. Output via systemMessage (visible to you, not added to the model's context).",
-      "source": "./plugins/language-tutor",
+      "source": "./plugins/redpen",
       "category": "productivity"
     }
   ]

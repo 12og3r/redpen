@@ -1,4 +1,4 @@
-# language-tutor
+# redpen
 
 A personal Claude Code plugin that **scores and rewrites every user prompt** in
 your chosen target language. Designed for developers who want passive
@@ -15,7 +15,7 @@ call with a strict "coach" system prompt, then displays the result inline:
 
 ```
 You: help me fix the bug, the app crash when click button
-language-tutor: [62] Help me fix the bug — the app crashes when I click the button.
+redpen: [62] Help me fix the bug — the app crashes when I click the button.
 
 Claude proceeds to answer your *original* prompt normally.
 ```
@@ -28,11 +28,11 @@ stays clean.
 
 ```sh
 # 1. Register this repo as a marketplace
-/plugin marketplace add 12og3r/language-tutor
-# (https://github.com/12og3r/language-tutor also works)
+/plugin marketplace add 12og3r/redpen
+# (https://github.com/12og3r/redpen also works)
 
 # 2. Install the plugin
-/plugin install language-tutor@language-tutor
+/plugin install redpen@redpen
 
 # 3. Restart Claude Code so the UserPromptSubmit hook registers
 ```
@@ -42,7 +42,7 @@ stays clean.
 Run the bundled setup command (after a session restart):
 
 ```
-/language-tutor:setup
+/redpen:setup
 ```
 
 This asks two questions:
@@ -52,7 +52,7 @@ This asks two questions:
 | Language | `English` · `中文 (Chinese)` · `Español (Spanish)` |
 | Model    | `Sonnet` (default, recommended) · `Haiku` · `Opus` |
 
-The chosen values are written to `~/.language-tutor.config`. You can also edit
+The chosen values are written to `~/.redpen.config`. You can also edit
 that file by hand:
 
 ```
@@ -65,7 +65,7 @@ MODEL=sonnet
 config keeps working across Anthropic model releases without a plugin
 update. Power users can also pin a specific version
 (e.g. `MODEL=claude-haiku-4-5-20251001`) — any value `claude --model`
-accepts will work. Pick `Other` in `/language-tutor:setup` to type a
+accepts will work. Pick `Other` in `/redpen:setup` to type a
 custom value. Set `MODEL=` (empty) to follow whatever Claude Code's
 `/model` is currently set to instead.
 
@@ -98,7 +98,7 @@ To avoid burning model calls on inputs that aren't natural-language prose:
   we can't surgically separate user-typed prose from pasted code, logs, or
   transcripts. Length is the simplest reliable proxy — long prompts almost
   always contain paste we don't want to rewrite. Tune via env var or by
-  adding `MAX_PROMPT_CHARS=<n>` to `~/.claude/language-tutor.config`.
+  adding `MAX_PROMPT_CHARS=<n>` to `~/.claude/redpen.config`.
 
 ## How it works
 
@@ -129,7 +129,7 @@ To avoid burning model calls on inputs that aren't natural-language prose:
    + CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
    + CLAUDE_CODE_DISABLE_CLAUDE_MDS=1
    + CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1
-   + LANGUAGE_TUTOR_ACTIVE=1  (recursion guard)
+   + REDPEN_ACTIVE=1  (recursion guard)
                   │
                   ▼
         Receive "[NN] <rewrite>"
@@ -201,13 +201,13 @@ Key design choices:
 ## Files
 
 ```
-language-tutor/
+redpen/
 ├── README.md                                ← this file
 ├── LICENSE
 ├── .claude-plugin/marketplace.json
-└── plugins/language-tutor/
+└── plugins/redpen/
     ├── .claude-plugin/plugin.json
-    ├── commands/setup.md                    ← /language-tutor:setup
+    ├── commands/setup.md                    ← /redpen:setup
     └── hooks/
         ├── hooks.json                       ← UserPromptSubmit registration
         └── grammar_check.sh                 ← the hook itself
@@ -215,8 +215,8 @@ language-tutor/
 
 User-level files (created on first run):
 
-- `~/.claude/language-tutor.config` — language + model
-- `~/.claude/language-tutor.log` — debug log (rotates manually)
+- `~/.claude/redpen.config` — language + model
+- `~/.claude/redpen.log` — debug log (rotates manually)
 
 ## License
 
