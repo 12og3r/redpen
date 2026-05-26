@@ -64,17 +64,20 @@ case "$PROMPT" in
 esac
 
 # Handle command-style prefixes:
-#   /cmd                → pure slash command, skip
+#   /cmd                → pure slash command, skip (Codex built-ins: /init, /diff, …)
 #   /cmd <text>         → slash command WITH args; coach just the args
+#   $cmd                → pure skill invocation, skip (Codex skills: $redpen-setup, …)
+#   $cmd <text>         → skill invocation WITH args; coach just the args
 #   !cmd or !cmd <text> → shell passthrough, always skip
 case "$PROMPT" in
-  /*' '*)
+  /*' '*|\$*' '*)
     PROMPT="${PROMPT#* }"
     PROMPT="${PROMPT#"${PROMPT%%[![:space:]]*}"}"
-    log "slash command with args — coaching: [$(printf '%s' "$PROMPT" | head -c 80)]"
-    if [[ -z "$PROMPT" ]]; then log "skip: empty after slash"; exit 0; fi
+    log "command with args — coaching: [$(printf '%s' "$PROMPT" | head -c 80)]"
+    if [[ -z "$PROMPT" ]]; then log "skip: empty after command"; exit 0; fi
     ;;
   /*) log "skip: pure slash command"; exit 0 ;;
+  \$*) log "skip: pure skill invocation"; exit 0 ;;
   !*) log "skip: shell passthrough"; exit 0 ;;
 esac
 
@@ -227,11 +230,12 @@ log "rewrite[0..120]=$(printf '%s' "$REWRITTEN" | head -c 120)"
 if [[ -z "$REWRITTEN" ]]; then log "skip: empty rewrite"; exit 0; fi
 
 # --- Render and emit -------------------------------------------------------
-# REDPEN_SINGLE_LINE=1 → render_diff.py collapses the divider + native hint
-# into one line with a colored arrow separator. Codex's systemMessage
-# channel is a single-line warning toast that strips newlines (even \n\n),
-# so multi-line layout is impossible there; one-line is the only honest
-# rendering.
+# Codex's systemMessage toast strips `\n` entirely (verified 2026-05 with a
+# refreshed plugin cache) but DOES preserve runs of spaces — long lines
+# wrap via natural terminal wrap at COLUMNS. render_diff.py's
+# REDPEN_SINGLE_LINE=1 branch exploits that: it pads with spaces to reach
+# end-of-row, so the divider and native-style text each appear on their
+# own visual row. Net effect mirrors Claude Code's 3-line layout.
 OUTPUT_JSON="$(REWRITTEN="$REWRITTEN" ORIGINAL_PROMPT="$PROMPT" LT_LANGUAGE="$LANGUAGE" \
     REDPEN_SINGLE_LINE=1 \
     /usr/bin/python3 "${_REDPEN_SHARED_DIR}/render_diff.py")" \

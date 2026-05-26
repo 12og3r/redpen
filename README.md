@@ -1,17 +1,25 @@
 # redpen
 
-A personal Claude Code plugin that **marks up every prompt you type** like a
-teacher with a red pen — scoring your phrasing, highlighting what's broken,
-and showing how a native speaker would say the same thing — all in your chosen
-target language. Designed for developers who want passive writing practice
-while doing their day job in Claude Code.
+A personal agent CLI plugin that **marks up every prompt you type** like
+a teacher with a red pen — scoring your phrasing, highlighting what's
+broken, and showing how a native speaker would say the same thing — all
+in your chosen target language. Designed for developers who want passive
+writing practice while doing their day job at the terminal.
 
-Your original prompt always reaches the model unchanged. The feedback is shown
-to you only — Claude proceeds to answer what you actually typed. redpen is a
-**coach**, not a rewriter: the goal is for you to read the correction, notice
-what was off, and write a little better next time.
+Currently supports two agent CLIs as separate but feature-parallel plugins:
 
-Supported languages:
+- **Claude Code** — install [`redpen`](#install-claude-code)
+- **OpenAI Codex CLI** — install [`redpen-codex`](#install-codex-cli)
+
+Both share the same architecture (UserPromptSubmit hook + `systemMessage`
+emit), the same scoring rubric, the same four target languages, and the
+same shared `render_diff.py`. Your original prompt always reaches the
+model unchanged — the feedback is shown to you only, never added to the
+model's context. redpen is a **coach**, not a rewriter: the goal is for
+you to read the correction, notice what was off, and write a little
+better next time.
+
+Supported languages (both plugins):
 
 - **English**
 - **中文 (Chinese)**
@@ -29,14 +37,37 @@ redpen: [62] help me fix the bug — the app crashes when I click the button.
         ──── Native style ────
         any idea why the app crashes whenever I click that button?
 
-Claude proceeds to answer your original prompt normally.
+The assistant then proceeds to answer your original prompt normally.
 ```
 
-The feedback is delivered via Claude Code's `systemMessage` channel, so it's
-visible to you but **never added to the model's context** — Claude only ever
-sees your original wording, and your conversation stays clean.
+In Claude Code that's a three-line `systemMessage` block. In Codex CLI
+the same content is rendered on a single line
+(`[62] <rewrite> ▍native▍ <native style>`) because Codex's hook channel
+is a one-line toast — see [Platform differences](#platform-differences).
 
-## Install
+The feedback is delivered via the host CLI's `systemMessage` channel
+(supported by both Claude Code and Codex), so it's visible to you but
+**never added to the model's context** — the assistant only ever sees
+your original wording, and your conversation stays clean.
+
+## Platform differences
+
+The two plugins are feature-parallel, but each host CLI has its own
+constraints:
+
+| | Claude Code (`redpen`) | Codex CLI (`redpen-codex`) |
+|---|---|---|
+| Config | `~/.claude/redpen.config` | `~/.codex/redpen.config` |
+| Default model | `haiku` (alias), user-configurable via `/redpen:setup` | `gpt-5.4-mini`, **locked in v0.3.0** (only model that works on ChatGPT-account Codex auth — edit `plugins/redpen-codex/hooks/grammar_check.sh` to override) |
+| Setup invoke | `/redpen:setup` | `$redpen-setup` (Codex skill — TUI only) |
+| Hook target | `claude -p` | `codex exec` |
+| Output layout | multi-line (score / divider / native style) | single line (`[N] <text> ▍native▍ <native style>`, inverted-bg label as the visual break) — Codex's systemMessage channel is a single-line toast that strips all newlines |
+
+The two configs live at independent paths (`~/.claude/redpen.config` vs
+`~/.codex/redpen.config`), so both plugins can be installed side-by-side
+without colliding.
+
+## Install (Claude Code)
 
 ```sh
 # 1. Register this repo as a marketplace
@@ -49,7 +80,22 @@ sees your original wording, and your conversation stays clean.
 # 3. Restart Claude Code so the UserPromptSubmit hook registers
 ```
 
-## Configure
+## Install (Codex CLI)
+
+```sh
+# 1. Register this repo as a Codex marketplace
+codex plugin marketplace add 12og3r/redpen
+
+# 2. Install the Codex plugin (note the @redpen marketplace suffix)
+codex plugin add redpen-codex@redpen
+```
+
+**Defaults**: out of the box (no config file), redpen-codex coaches in
+**English** with the **native-style hint on**. Send any prompt and you
+should see a `[NN] <rewrite>  →  <native-style>` line. No setup
+required.
+
+## Configure (Claude Code)
 
 Run the bundled setup command (after a session restart):
 
@@ -83,36 +129,9 @@ accepts will work. Pick `Other` in `/redpen:setup` to type a
 custom value. Set `MODEL=` (empty) to follow whatever Claude Code's
 `/model` is currently set to instead.
 
-## Codex CLI version
+## Configure (Codex CLI)
 
-A sibling plugin `redpen-codex` runs the same coaching workflow inside
-OpenAI's Codex CLI. Architecture is identical (UserPromptSubmit hook +
-systemMessage emit); the differences are:
-
-| | Claude Code (`redpen`) | Codex CLI (`redpen-codex`) |
-|---|---|---|
-| Config | `~/.claude/redpen.config` | `~/.codex/redpen.config` |
-| Default model | `haiku` (alias), user-configurable via `/redpen:setup` | `gpt-5.4-mini`, **locked in v0.3.0** (only model that works on ChatGPT-account Codex auth — edit `plugins/redpen-codex/hooks/grammar_check.sh` to override) |
-| Setup invoke | `/redpen:setup` | `$redpen-setup` (Codex skill — TUI only) |
-| Hook target | `claude -p` | `codex exec` |
-| Output layout | multi-line (score / divider / native style) | single line (`[N] <text>  →  <native style>`) — Codex's systemMessage channel is a single-line toast that strips all newlines |
-
-### Install
-
-```sh
-# Add this repo as a Codex marketplace:
-codex plugin marketplace add 12og3r/redpen
-
-# Install the Codex plugin:
-codex plugin add redpen-codex
-```
-
-**Defaults**: out of the box (no config file), redpen-codex coaches in
-**English** with the **native-style hint on**. Send any prompt and you
-should see a `[NN] <rewrite>  →  <native-style>` line. No setup
-required.
-
-**To change language or turn off the native-style hint**, either:
+To change language or turn off the native-style hint, either:
 
 - Edit `~/.codex/redpen.config` by hand (just 2 lines — see the example
   in [plugins/redpen-codex/skills/setup/SKILL.md](plugins/redpen-codex/skills/setup/SKILL.md)),
@@ -120,11 +139,7 @@ required.
 - In a Codex TUI session, type `$redpen-setup` — a conversational
   wizard that walks two numbered questions and writes the file for you.
 
-Config lives at `~/.codex/redpen.config` (independent from the Claude
-Code plugin's `~/.claude/redpen.config`, so both plugins can be
-installed side-by-side without colliding).
-
-### Known limitations
+## Codex CLI — known limitations
 
 - **Single-line output only.** Codex's `systemMessage` hook channel renders
   as a single-line warning toast that strips newlines (verified empirically
@@ -166,7 +181,7 @@ installed side-by-side without colliding).
   codex wrapper), or run a local model via `--oss --local-provider
   ollama` (loses quality).
 
-### Developing
+## Developing
 
 If you edit any file in `plugins/shared/`, run `make sync-shared` to copy
 the changes into `plugins/redpen/shared/` and `plugins/redpen-codex/shared/`
@@ -198,15 +213,23 @@ To avoid burning model calls on inputs that aren't natural-language prose:
 - Empty prompts
 - Pure slash commands (e.g. `/help`) — when a slash command is followed by
   space-separated args, those args ARE coached
+- (Codex only) Pure skill invocations (e.g. `$redpen-setup`) — same args
+  rule as slash commands; the `$cmd <text>` form coaches just the args
 - Shell passthroughs (`!ls`, `!ls -la`)
 - Prompts longer than `MAX_PROMPT_CHARS` characters (default `2000`). The
-  UserPromptSubmit hook doesn't receive paste metadata from Claude Code, so
+  UserPromptSubmit hook doesn't receive paste metadata from the host CLI, so
   we can't surgically separate user-typed prose from pasted code, logs, or
   transcripts. Length is the simplest reliable proxy — long prompts almost
   always contain paste we don't want to rewrite. Tune via env var or by
-  adding `MAX_PROMPT_CHARS=<n>` to `~/.claude/redpen.config`.
+  adding `MAX_PROMPT_CHARS=<n>` to your `redpen.config` (the Claude Code
+  plugin reads `~/.claude/redpen.config`; the Codex plugin reads
+  `~/.codex/redpen.config`).
 
-## How it works
+## How it works (Claude Code)
+
+The Codex CLI version follows the same shape (UserPromptSubmit hook
+spawns `codex exec`, parses output, emits `systemMessage`); see
+`plugins/redpen-codex/hooks/grammar_check.sh` for its exact flag stack.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -270,7 +293,9 @@ Key design choices:
 - `--no-session-persistence` means no `.jsonl` transcript ever gets written,
   so we don't need `--session-id` tracking or a cleanup pass.
 
-## Limitations
+## Limitations (Claude Code)
+
+(For Codex-specific limitations see [Codex CLI — known limitations](#codex-cli--known-limitations) above.)
 
 - Adds ~1–3s of latency before your prompt reaches the model (median ~1.2s
   with Haiku, ~2.2s with Sonnet, on the OAuth/Pro auth path, measured over a
@@ -314,19 +339,33 @@ Key design choices:
 redpen/
 ├── README.md                                ← this file
 ├── LICENSE
-├── .claude-plugin/marketplace.json
-└── plugins/redpen/
-    ├── .claude-plugin/plugin.json
-    ├── commands/setup.md                    ← /redpen:setup
-    └── hooks/
-        ├── hooks.json                       ← UserPromptSubmit registration
-        └── grammar_check.sh                 ← the hook itself
+├── .claude-plugin/marketplace.json          ← Claude Code marketplace entry
+├── .agents/plugins/marketplace.json         ← Codex CLI marketplace entry
+├── plugins/redpen/                          ← Claude Code plugin
+│   ├── .claude-plugin/plugin.json
+│   ├── commands/setup.md                    ← /redpen:setup
+│   ├── shared/render_diff.py                ← (synced from plugins/shared/)
+│   └── hooks/
+│       ├── hooks.json                       ← UserPromptSubmit registration
+│       └── grammar_check.sh                 ← the hook itself
+├── plugins/redpen-codex/                    ← Codex CLI plugin
+│   ├── .codex-plugin/plugin.json
+│   ├── skills/setup/SKILL.md                ← $redpen-setup
+│   ├── shared/render_diff.py                ← (synced from plugins/shared/)
+│   └── hooks/
+│       ├── hooks.json
+│       └── grammar_check.sh
+└── plugins/shared/                          ← source of truth for shared files;
+                                               `make sync-shared` copies into both
+                                               plugins above
 ```
 
 User-level files (created on first run):
 
-- `~/.claude/redpen.config` — language + model
-- `~/.claude/redpen.log` — debug log (rotates manually)
+- `~/.claude/redpen.config` — Claude Code plugin: language + model + hint
+- `~/.claude/redpen.log` — Claude Code plugin debug log (rotates manually)
+- `~/.codex/redpen.config` — Codex plugin: language + hint (model is locked)
+- `~/.codex/redpen.log` — Codex plugin debug log
 
 ## License
 
