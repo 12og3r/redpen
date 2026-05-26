@@ -78,13 +78,37 @@ case "$PROMPT" in
 esac
 
 # --- Load user config -------------------------------------------------------
-# First-run guard: if the user has never run /redpen:setup, skip
-# rewriting entirely. The SessionStart hook is responsible for nudging the
-# user (or Claude) to run setup; without a config we shouldn't silently
-# coach in whichever language the defaults happen to be.
+# First-run guard: if the user has never run /redpen:setup, skip rewriting
+# AND nudge Claude to run setup via UserPromptSubmit additionalContext. We
+# do the nudge here (not just in the SessionStart prewarm hook) because
+# SessionStart fires inconsistently — it may not re-fire on /clear/resume in
+# every Claude Code version, leaving sessions where the SessionStart nudge
+# never lands. Re-emitting on every prompt until the config exists is
+# self-healing: as soon as /redpen:setup finishes, the file appears and the
+# nudge stops firing on its own.
 CONFIG_FILE="${HOME}/.claude/redpen.config"
 if [[ ! -f "$CONFIG_FILE" ]]; then
-  log "skip: no config at $CONFIG_FILE — user needs to run /redpen:setup first"
+  log "no config at $CONFIG_FILE — emitting UserPromptSubmit first-run nudge"
+  /usr/bin/python3 -c '
+import json, sys
+sys.stdout.write(json.dumps({
+  "hookSpecificOutput": {
+    "hookEventName": "UserPromptSubmit",
+    "additionalContext": (
+      "<redpen-first-run>\n"
+      "The redpen plugin has not been configured yet "
+      "(no ~/.claude/redpen.config file exists). Before doing "
+      "anything else this turn — including answering the user, "
+      "exploring code, or invoking any other tool — you MUST invoke the "
+      "/redpen:setup slash command via the Skill tool "
+      "(skill: \"redpen:setup\") to configure language, model, "
+      "and native-style hint. After setup completes, then proceed with "
+      "whatever the user originally asked.\n"
+      "</redpen-first-run>"
+    )
+  }
+}))
+'
   exit 0
 fi
 
