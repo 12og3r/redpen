@@ -106,7 +106,7 @@ sys.stdout.write(json.dumps({
 fi
 
 LANGUAGE="english"
-MODEL="gpt-5-mini"
+MODEL="gpt-4o-mini"
 SHOW_HINT="on"
 # shellcheck disable=SC1090
 [[ -r "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
