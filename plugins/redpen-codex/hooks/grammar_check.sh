@@ -111,7 +111,7 @@ sys.stdout.write(json.dumps({
 fi
 
 LANGUAGE="english"
-MODEL="gpt-4o-mini"
+MODEL="gpt-5.4-mini"
 SHOW_HINT="on"
 # shellcheck disable=SC1090
 [[ -r "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
@@ -145,14 +145,12 @@ CODEX_BIN="$(command -v codex || true)"
 if [[ -z "$CODEX_BIN" ]]; then log "skip: codex CLI not on PATH"; exit 0; fi
 
 # --- Build the coach system prompt -----------------------------------------
-# coach_prompts.sh lives at plugins/shared/, two dirs up from this hook.
-# NOTE: install-time packaging is TBD — when the plugin is installed via
-# /plugin install, the marketplace installer copies plugins/redpen-codex/ but
-# not plugins/shared/, so this BASH_SOURCE-derived path resolves correctly
-# only for in-repo dev installs. shared/ packaging for marketplace installs
-# is unresolved — see Known Limitations in README.
-_REDPEN_SHARED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared" && pwd)" \
-  || { log "fatal: cannot resolve plugins/shared/ relative to hook"; exit 0; }
+# coach_prompts.sh lives at plugins/redpen-codex/shared/ (bundled with the
+# plugin so codex's install-time copy picks it up too). The canonical
+# source is plugins/shared/ at the repo root; `make sync-shared` (or
+# `make check-shared` in CI) keeps the bundled copies in sync.
+_REDPEN_SHARED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../shared" && pwd)" \
+  || { log "fatal: cannot resolve shared/ relative to hook"; exit 0; }
 # shellcheck disable=SC1091
 source "${_REDPEN_SHARED_DIR}/coach_prompts.sh" \
   || { log "fatal: cannot source coach_prompts.sh from ${_REDPEN_SHARED_DIR}"; exit 0; }
@@ -204,7 +202,11 @@ log "clean_cwd=${CLEAN_CWD:-<none, using current>}"
 # --- Build codex exec args -------------------------------------------------
 # Minimal-startup flag stack — analog to plugins/redpen/hooks/grammar_check.sh's
 # claude -p invocation. Per Task 3 research (listed in append order):
-#   --model "$MODEL"          chosen via setup; defaults to gpt-4o-mini
+#   --model "$MODEL"          chosen via setup; defaults to gpt-5.4-mini
+#                             (the cheap option available to ChatGPT-account
+#                             Codex users; gpt-4o-mini / gpt-5-mini / gpt-5
+#                             return "model not supported" on ChatGPT auth
+#                             and require an API key instead)
 #   --ephemeral               no transcript persistence (essential for a hook)
 #   --ignore-user-config      skip $CODEX_HOME/config.toml (faster startup)
 #   --ignore-rules            skip execpolicy .rules files
@@ -244,7 +246,13 @@ log "rewrite[0..120]=$(printf '%s' "$REWRITTEN" | head -c 120)"
 if [[ -z "$REWRITTEN" ]]; then log "skip: empty rewrite"; exit 0; fi
 
 # --- Render and emit -------------------------------------------------------
+# REDPEN_SINGLE_LINE=1 → render_diff.py collapses the divider + native hint
+# into one line with a colored arrow separator. Codex's systemMessage
+# channel is a single-line warning toast that strips newlines (even \n\n),
+# so multi-line layout is impossible there; one-line is the only honest
+# rendering.
 OUTPUT_JSON="$(REWRITTEN="$REWRITTEN" ORIGINAL_PROMPT="$PROMPT" LT_LANGUAGE="$LANGUAGE" \
+    REDPEN_SINGLE_LINE=1 \
     /usr/bin/python3 "${_REDPEN_SHARED_DIR}/render_diff.py")" \
   || { log "fatal: render_diff.py failed"; exit 0; }
 

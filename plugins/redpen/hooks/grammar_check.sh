@@ -167,14 +167,12 @@ CLAUDE_BIN="$(command -v claude || true)"
 if [[ -z "$CLAUDE_BIN" ]]; then log "skip: claude CLI not on PATH"; exit 0; fi
 
 # --- Build the coach system prompt -----------------------------------------
-# coach_prompts.sh lives at plugins/shared/, two dirs up from this hook.
-# NOTE: install-time packaging is TBD — when the plugin is installed via
-# /plugin install, the marketplace installer copies plugins/redpen/ but
-# not plugins/shared/, so this BASH_SOURCE-derived path resolves correctly
-# only for in-repo dev installs. shared/ packaging for marketplace installs
-# is unresolved — see Known Limitations in README.
-_REDPEN_SHARED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared" && pwd)" \
-  || { log "fatal: cannot resolve plugins/shared/ relative to hook"; exit 0; }
+# coach_prompts.sh lives at plugins/redpen/shared/ (bundled with the plugin
+# so marketplace installers that copy plugins/redpen/ pick it up too). The
+# canonical source is plugins/shared/ at the repo root; `make sync-shared`
+# (or `make check-shared` in CI) keeps the bundled copies in sync.
+_REDPEN_SHARED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../shared" && pwd)" \
+  || { log "fatal: cannot resolve shared/ relative to hook"; exit 0; }
 # shellcheck disable=SC1091
 source "${_REDPEN_SHARED_DIR}/coach_prompts.sh" \
   || { log "fatal: cannot source coach_prompts.sh from ${_REDPEN_SHARED_DIR}"; exit 0; }

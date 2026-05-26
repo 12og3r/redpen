@@ -92,9 +92,10 @@ systemMessage emit); the differences are:
 | | Claude Code (`redpen`) | Codex CLI (`redpen-codex`) |
 |---|---|---|
 | Config | `~/.claude/redpen.config` | `~/.codex/redpen.config` |
-| Default model | `haiku` (alias) | `gpt-4o-mini` |
+| Default model | `haiku` (alias) | `gpt-5.4-mini` |
 | Setup invoke | `/redpen:setup` | `$redpen-setup` (Codex skill — TUI only) |
 | Hook target | `claude -p` | `codex exec` |
+| Output layout | multi-line (score / divider / native style) | single line (`[N] <text>  →  <native style>`) — Codex's systemMessage channel is a single-line toast that strips all newlines |
 
 ### Install
 
@@ -113,26 +114,40 @@ installed side-by-side without colliding).
 
 ### Known limitations
 
+- **Single-line output only.** Codex's `systemMessage` hook channel renders
+  as a single-line warning toast that strips newlines (verified empirically
+  — `\n`, `\n\n`, `\r`, `<br>`, U+2028, markdown hard break, all collapse).
+  The Codex plugin therefore renders the score, divider, and native-style
+  hint on one line with a `→` separator. Claude Code keeps its richer
+  three-line layout.
+- **Model availability depends on auth.** Codex authed with a ChatGPT
+  account (default `codex auth login`) only supports the `gpt-5.4` family —
+  `gpt-4o-mini` / `gpt-5-mini` / `gpt-5` / `gpt-5-codex` return
+  `model not supported`. The plugin defaults to `gpt-5.4-mini`, which works
+  in both modes. To use the other models, set `OPENAI_API_KEY` instead of
+  ChatGPT-account auth.
 - **Skills are TUI-only.** The `$redpen-setup` skill only fires inside the
   interactive Codex TUI. The first-run nudge will still fire in `codex exec`
   non-interactive mode, but the model can't auto-invoke the skill there —
   it will ask you to run setup in the TUI.
-- **In-repo dev installs only.** The Codex plugin's hook script sources a
-  shared file from `plugins/shared/`. The marketplace installer copies
-  `plugins/redpen-codex/` but NOT the sibling `plugins/shared/`. As a
-  result, the plugin currently works reliably only for users who `git
-  clone` this repo and point Codex at the local path. A future release
-  will bundle `shared/` into each plugin so marketplace installs work
-  cleanly. Same caveat applies to the Claude Code plugin (`redpen`).
 - **No `--no-tools` analog in `codex exec`** — tool definitions still
-  inflate the prompt context ~11k tokens vs. the Claude Code version.
-  Latency and cost are higher per coach turn. Tune via your account's
-  rate limits and consider running `MODEL=gpt-4o-mini` (the default).
-- **`codex exec` flag stack is empirical**. We chose `--ephemeral`,
+  inflate the prompt context (~5–7k tokens observed) vs. the Claude Code
+  version. Latency and cost are higher per coach turn. Stick with
+  `gpt-5.4-mini` (the default) if you care about cost.
+- **`codex exec` flag stack is empirical**. We use `--ephemeral`,
   `--ignore-user-config`, `--ignore-rules`, `--skip-git-repo-check`,
-  `--sandbox read-only`, `-c model_reasoning_effort=low` based on docs;
-  none of them have been benched on a live Codex install in this repo.
-  If something is slow on your machine, file an issue with timings.
+  `--sandbox read-only`, `-c model_reasoning_effort=low`. The combination
+  works on Codex 0.133.0 + ChatGPT-account auth (verified end-to-end
+  manually). If something is slow on your machine, file an issue with
+  timings.
+
+### Developing
+
+If you edit any file in `plugins/shared/`, run `make sync-shared` to copy
+the changes into `plugins/redpen/shared/` and `plugins/redpen-codex/shared/`
+(both plugins bundle their own copy of `shared/` so marketplace installs
+are self-contained). `make check-shared` flags drift — wire it into CI if
+you have it.
 
 ## Scoring rubric
 

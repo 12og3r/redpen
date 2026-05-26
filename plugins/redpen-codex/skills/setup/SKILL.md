@@ -11,7 +11,7 @@ explore the codebase, do not run other commands, do not summarise.
 
 Read `~/.codex/redpen.config`. Parse:
 - `LANGUAGE=<...>` (default: `english`)
-- `MODEL=<...>` (default: `gpt-4o-mini`)
+- `MODEL=<...>` (default: `gpt-5.4-mini`)
 - `SHOW_HINT=<on|off>` (default: `on`)
 
 Remember as `CURRENT_LANGUAGE`, `CURRENT_MODEL`, `CURRENT_SHOW_HINT`.
@@ -48,16 +48,21 @@ Options (only these four; if the user picks something else, fall back to English
 **Question 2 — model**
 
 Which OpenAI model should the plugin use for rewriting? Pick a family below,
-or type a specific model id (e.g. gpt-5.4, gpt-5.3-Codex) if you want to pin
-one.
+or type a specific model id if you want to pin one.
 
-Options (ALWAYS append ` (Recommended)` to `gpt-4o-mini`, regardless of
-`CURRENT_MODEL`. gpt-4o-mini is the cheapest+fastest documented option for
-this task; do NOT use `(Recommended)` as a state marker):
-- `gpt-4o-mini` — Cheapest and fastest documented OpenAI model. Best fit for the coaching task.
-- `gpt-5-mini` — Newer family. May not be available on all accounts; falls through silently if so.
-- `gpt-5` — Smarter; higher latency and cost.
-- Other — type any model id `codex exec --model` accepts (e.g. `gpt-5.4`, `gpt-5.3-Codex`).
+**IMPORTANT auth note:** If the user logs into Codex with a ChatGPT account
+(the default for `codex auth login`), only the `gpt-5.4` family models work
+— `gpt-4o-mini` / `gpt-5-mini` / `gpt-5` / `gpt-5-codex` all return
+"model not supported" on ChatGPT auth. If the user has an OpenAI API key
+(`OPENAI_API_KEY` set), all models are available. Default and recommend
+`gpt-5.4-mini` since it works in both modes.
+
+Options (ALWAYS append ` (Recommended)` to `gpt-5.4-mini`, regardless of
+`CURRENT_MODEL`; do NOT use `(Recommended)` as a state marker):
+- `gpt-5.4-mini` — Works on both ChatGPT-account and API-key Codex auth. Cheapest available option for ChatGPT-account users.
+- `gpt-5.4` — Higher quality, slower; same auth requirements as gpt-5.4-mini.
+- `gpt-4o-mini` — Older but cheaper. **Requires `OPENAI_API_KEY` — fails on ChatGPT-account auth.**
+- Other — type any model id `codex exec --model` accepts (e.g. `gpt-5-mini`, `gpt-5-codex`).
 
 **Question 3 — native style line**
 
@@ -78,11 +83,11 @@ Language:
 - Anything else → `english`
 
 Model:
+- `gpt-5.4-mini ...` → `gpt-5.4-mini`
+- `gpt-5.4 ...` (but NOT `gpt-5.4-mini`) → `gpt-5.4`
 - `gpt-4o-mini ...` → `gpt-4o-mini`
-- `gpt-5-mini ...` → `gpt-5-mini`
-- `gpt-5 ...` (but NOT `gpt-5-mini`) → `gpt-5`
 - `Other` with a typed value → the typed value verbatim, whitespace-trimmed
-- `Other` with empty input → `gpt-4o-mini`
+- `Other` with empty input → `gpt-5.4-mini`
 
 Native hint:
 - `On ...` → `on`
@@ -102,12 +107,12 @@ content (substitute the chosen values):
 #   aliases: en | zh, cn, 中文 | es, español, espanol | ja, jp, 日本語
 LANGUAGE=<new language>
 #
-# MODEL: any value `codex exec --model` accepts. The two recommended
-# defaults are:
-#   gpt-4o-mini  — cheapest and fastest documented option (recommended)
-#   gpt-5-mini   — newer; may not be available on all accounts
-# You can also pin a specific version explicitly, e.g.
-#   MODEL=gpt-5.4
+# MODEL: any value `codex exec --model` accepts. Recommended:
+#   gpt-5.4-mini  — cheapest model available to ChatGPT-account auth (default)
+#   gpt-5.4       — higher quality, same auth scope
+#   gpt-4o-mini   — cheaper but REQUIRES an OPENAI_API_KEY; fails on
+#                   ChatGPT-account auth with "model not supported"
+# Other ids (gpt-5-mini, gpt-5, gpt-5-codex) require an API key too.
 # Leave empty (MODEL=) to follow whatever Codex's default model is.
 MODEL=<new model>
 #
@@ -119,10 +124,10 @@ SHOW_HINT=<new show_hint>
 ## Step 5 — Confirm
 
 Reply with ONE short line summarising what changed. Examples:
-- Both changed: `✓ Switched to 中文 with gpt-5.`
-- Only language: `✓ Language set to English (model unchanged: gpt-4o-mini).`
-- Only model: `✓ Model set to gpt-5 (language unchanged: English).`
-- Custom model: `✓ Model set to gpt-5.4 (language unchanged: English).`
-- Nothing changed: `Already on English + gpt-4o-mini — no change.`
+- Both changed: `✓ Switched to 中文 with gpt-5.4.`
+- Only language: `✓ Language set to English (model unchanged: gpt-5.4-mini).`
+- Only model: `✓ Model set to gpt-5.4 (language unchanged: English).`
+- Custom model: `✓ Model set to gpt-5-codex (language unchanged: English).`
+- Nothing changed: `Already on English + gpt-5.4-mini — no change.`
 
 New setting takes effect on your next prompt. No further explanation.
