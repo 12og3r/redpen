@@ -83,6 +83,57 @@ accepts will work. Pick `Other` in `/redpen:setup` to type a
 custom value. Set `MODEL=` (empty) to follow whatever Claude Code's
 `/model` is currently set to instead.
 
+## Codex CLI version
+
+A sibling plugin `redpen-codex` runs the same coaching workflow inside
+OpenAI's Codex CLI. Architecture is identical (UserPromptSubmit hook +
+systemMessage emit); the differences are:
+
+| | Claude Code (`redpen`) | Codex CLI (`redpen-codex`) |
+|---|---|---|
+| Config | `~/.claude/redpen.config` | `~/.codex/redpen.config` |
+| Default model | `haiku` (alias) | `gpt-4o-mini` |
+| Setup invoke | `/redpen:setup` | `$redpen-setup` (Codex skill — TUI only) |
+| Hook target | `claude -p` | `codex exec` |
+
+### Install
+
+```sh
+# Add this repo as a Codex marketplace:
+codex plugin marketplace add 12og3r/redpen
+
+# Install the Codex plugin:
+codex plugin add redpen-codex
+```
+
+Then, in a Codex TUI session, type `$redpen-setup` to configure language /
+model / native-style-hint. The settings live at `~/.codex/redpen.config`
+(independent from the Claude Code plugin's config, so both plugins can be
+installed side-by-side without colliding).
+
+### Known limitations
+
+- **Skills are TUI-only.** The `$redpen-setup` skill only fires inside the
+  interactive Codex TUI. The first-run nudge will still fire in `codex exec`
+  non-interactive mode, but the model can't auto-invoke the skill there —
+  it will ask you to run setup in the TUI.
+- **In-repo dev installs only.** The Codex plugin's hook script sources a
+  shared file from `plugins/shared/`. The marketplace installer copies
+  `plugins/redpen-codex/` but NOT the sibling `plugins/shared/`. As a
+  result, the plugin currently works reliably only for users who `git
+  clone` this repo and point Codex at the local path. A future release
+  will bundle `shared/` into each plugin so marketplace installs work
+  cleanly. Same caveat applies to the Claude Code plugin (`redpen`).
+- **No `--no-tools` analog in `codex exec`** — tool definitions still
+  inflate the prompt context ~11k tokens vs. the Claude Code version.
+  Latency and cost are higher per coach turn. Tune via your account's
+  rate limits and consider running `MODEL=gpt-4o-mini` (the default).
+- **`codex exec` flag stack is empirical**. We chose `--ephemeral`,
+  `--ignore-user-config`, `--ignore-rules`, `--skip-git-repo-check`,
+  `--sandbox read-only`, `-c model_reasoning_effort=low` based on docs;
+  none of them have been benched on a live Codex install in this repo.
+  If something is slow on your machine, file an issue with timings.
+
 ## Scoring rubric
 
 The model scores your original prompt on a 0–100 scale:
