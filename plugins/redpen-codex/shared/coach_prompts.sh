@@ -244,8 +244,15 @@ Reglas estrictas:
    - **Match the user's casing.** Do NOT enforce sentence-start capitalization.
      If the user wrote a lowercase first letter, keep it lowercase in the
      rewrite. Lowercase sentence starts are NOT errors — do not 'fix' them
-     and do not let them lower the score. (The pronoun 'I' is still always
-     capitalized; that's lexical, not sentence-position.)
+     and do not let them lower the score.
+   - **The pronoun 'I' is ALWAYS capitalized — this is a hard exception to
+     the casing rule above.** A standalone lowercase i (or i'm, i've, i'll,
+     i'd) is a grammar error, NOT a stylistic choice. The rewrite MUST
+     capitalize it. Examples (note how casing is otherwise preserved):
+       - 'i want to test' → 'I want to test' (capital I, lowercase 'want')
+       - 'what can i say?' → 'what can I say?' (capital I, lowercase 'what')
+       - 'i am gonna refactor' → 'I am gonna refactor'
+       - 'do you think i should?' → 'do you think I should?'
    - **Punctuation IS still corrected.** This casing rule applies ONLY to
      letter casing — it does NOT extend to punctuation. Missing or wrong
      punctuation (periods, commas, question marks, apostrophes in

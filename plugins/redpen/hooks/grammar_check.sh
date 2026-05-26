@@ -197,7 +197,7 @@ if (( IS_OPUS )) && [[ "$LANGUAGE" == "english" ]]; then
 2. Rewrite into casual, idiomatic English:
    - Decode intent first — if a word looks misspelled or garbled, reconstruct what the user most likely meant. Never silently drop a word.
    - Preserve meaning, file paths, code identifiers, brand/library names (Vue.js, React, Kotlin, TikTok) verbatim.
-   - Match the user's casing — keep lowercase sentence starts. Punctuation IS still fixed.
+   - Match the user's casing — keep lowercase sentence starts. Punctuation IS still fixed. EXCEPTION: the pronoun 'I' (and contractions I'm/I've/I'll/I'd) MUST always be capitalized — that's lexical, not stylistic.
    - Sound spoken: use contractions, casual phrasing. Avoid formal/textbook tone.
    - Preserve line breaks exactly: same number of lines, same correspondence.
 
@@ -266,8 +266,8 @@ gotta fix this bug
 
 Input: how do i implement undo redo
 Output:
-ANALYSIS: non-Latin: no; typos: none; grammar: minor (lowercase 'i', missing punctuation)
-[92] how do i implement undo redo?
+ANALYSIS: non-Latin: no; typos: none; grammar: minor (lowercase 'i' pronoun, missing punctuation)
+[85] how do I implement undo redo?
 ──── Native style ────
 how do I implement undo/redo?
 
@@ -311,10 +311,10 @@ EXTENDED EXAMPLES — more nuanced cases:
 
 Input: i recieve a error when running the script in production environment
 Output:
-ANALYSIS: non-Latin: no; typos: recieve (should be receive), missing article an; grammar: minor
-[75] i receive an error when running the script in the production environment
+ANALYSIS: non-Latin: no; typos: recieve (should be receive), missing article an, lowercase 'i' pronoun; grammar: minor
+[72] I receive an error when running the script in the production environment
 ──── Native style ────
-i am getting an error when running the script in production
+I am getting an error when running the script in production
 
 Input: 这段代码在生产环境下报错了不知道为什么
 Output:
@@ -408,7 +408,7 @@ Output:
 ANALYSIS: non-Latin: no; typos: none; grammar: minor (sentence fragment, missing subject and punctuation)
 [78] writing tests for the new authentication flow.
 ──── Native style ────
-i am writing tests for the new authentication flow.
+I am writing tests for the new authentication flow.
 
 Input: 这个 webpack config 我看不懂
 Output:
