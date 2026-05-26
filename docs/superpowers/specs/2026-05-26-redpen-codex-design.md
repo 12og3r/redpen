@@ -1,8 +1,13 @@
 # redpen-codex Design
 
 **Date:** 2026-05-26
-**Status:** Draft — pending user review
+**Status:** Draft — partially superseded by [2026-05-26-codex-research.md](./2026-05-26-codex-research.md)
 **Goal:** Ship a Codex CLI version of the redpen plugin that mirrors the Claude Code version's UX (inline `[NN] <rewrite>` shown via `systemMessage`, never added to model context), sharing as much code as possible with the existing plugin.
+
+> **Updates after Task 3 research:** This design was written before the Codex CLI hands-on research. Where it diverges from `2026-05-26-codex-research.md`, the research notes win. Specific corrections:
+> - Codex plugin commands use `skills/<name>/SKILL.md` (not `commands/setup.md`), invoked as `$skill-name` (not `/redpen-codex:setup`). Every reference below to "the `/redpen-codex:setup` slash command" should be read as "the `redpen-setup` skill".
+> - Default model is `gpt-4o-mini` (not `gpt-5-mini`) — the latter doesn't appear in current OpenAI model listings.
+> - Codex marketplace schema differs (`source` is an object with a `policy` block) — see research notes Q7.
 
 ## Background
 
