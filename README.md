@@ -131,13 +131,28 @@ custom value. Set `MODEL=` (empty) to follow whatever Claude Code's
 
 ## Configure (Codex CLI)
 
-To change language or turn off the native-style hint, either:
+In a Codex TUI session, type:
 
-- Edit `~/.codex/redpen.config` by hand (just 2 lines — see the example
-  in [plugins/redpen-codex/skills/setup/SKILL.md](plugins/redpen-codex/skills/setup/SKILL.md)),
-  OR
-- In a Codex TUI session, type `$redpen-setup` — a conversational
-  wizard that walks two numbered questions and writes the file for you.
+```
+$redpen-setup
+```
+
+The skill walks two numbered questions:
+
+| Question | Choices |
+|---|---|
+| Language | `English` · `中文 (Chinese)` · `Español (Spanish)` · `日本語 (Japanese)` |
+| Native style line | `On` (default, recommended) · `Off` |
+
+The chosen values are written to `~/.codex/redpen.config`. (Model is
+locked to `gpt-5.4-mini` in v0.3.0, so the skill doesn't ask about it —
+see [Codex CLI — known limitations](#codex-cli--known-limitations) for
+how to override.)
+
+You can also edit `~/.codex/redpen.config` by hand (just 2 lines — see
+the example in [plugins/redpen-codex/skills/setup/SKILL.md](plugins/redpen-codex/skills/setup/SKILL.md));
+this is the only route in non-TUI `codex exec` since skills don't fire
+there.
 
 ## Codex CLI — known limitations
 
