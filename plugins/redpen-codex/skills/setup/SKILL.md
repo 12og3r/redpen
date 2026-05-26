@@ -25,8 +25,12 @@ When the config is unset, no option should be marked with ✓.
 
 ## Step 2 — Ask the user (three questions, one at a time)
 
-Ask the user three questions in sequence, waiting for an answer between
-each. **Current-selection marker:** append ` ✓` to the option whose value
+Ask Question 1 and wait for the user's reply. Only after they reply, ask
+Question 2. Only after they reply to Question 2, ask Question 3. Do NOT
+batch the three questions into one turn — the user needs to see and answer
+each one independently.
+
+**Current-selection marker:** append ` ✓` to the option whose value
 matches the user's current config — this shows them what they're on. The ✓
 is independent of `(Recommended)`; both can appear together. When matching
 the user's answer in Step 3, ignore any trailing ` ✓`.
