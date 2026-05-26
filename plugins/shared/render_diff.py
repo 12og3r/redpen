@@ -54,8 +54,7 @@ language = os.environ.get("LT_LANGUAGE", "english")
 # Haiku-only: model emits a leading "ANALYSIS: ..." line before the score
 # (see IS_HAIKU block in grammar_check.sh) to prevent misjudging clean
 # English as score 0. The user does not need to see it — strip it before
-# rendering. NOTE: avoid apostrophes here — this comment lives inside a
-# single-quoted bash string and a stray apostrophe will break the script.
+# rendering.
 if raw.startswith("ANALYSIS"):
     _, _, raw = raw.partition("\n")
     raw = raw.lstrip()
