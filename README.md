@@ -1,28 +1,40 @@
 # redpen
 
-A personal Claude Code plugin that **scores and rewrites every user prompt** in
-your chosen target language. Designed for developers who want passive
-writing practice while doing their day job in Claude Code.
+A personal Claude Code plugin that **marks up every prompt you type** like a
+teacher with a red pen — scoring your phrasing, highlighting what's broken,
+and showing how a native speaker would say the same thing — all in your chosen
+target language. Designed for developers who want passive writing practice
+while doing their day job in Claude Code.
+
+Your original prompt always reaches the model unchanged. The feedback is shown
+to you only — Claude proceeds to answer what you actually typed. redpen is a
+**coach**, not a rewriter: the goal is for you to read the correction, notice
+what was off, and write a little better next time.
 
 Supported languages:
 
 - **English**
 - **中文 (Chinese)**
 - **Español (Spanish)**
+- **日本語 (Japanese)**
 
-Each time you submit a prompt, the plugin sends it to a headless `claude -p`
-call with a strict "coach" system prompt, then displays the result inline:
+Each time you submit a prompt, the plugin scores your phrasing, shows a
+corrected version with the changes diffed inline (red strikethrough for what
+was removed, green for what was added), and (optionally) a "native style" line
+showing how a native speaker would phrase the same thing:
 
 ```
 You: help me fix the bug, the app crash when click button
-redpen: [62] Help me fix the bug — the app crashes when I click the button.
+redpen: [62] help me fix the bug — the app crashes when I click the button.
+        ──── Native style ────
+        any idea why the app crashes whenever I click that button?
 
-Claude proceeds to answer your *original* prompt normally.
+Claude proceeds to answer your original prompt normally.
 ```
 
-The feedback is shown via Claude Code's `systemMessage` channel, so it's
-visible to you but **never added to the model's context** — your conversation
-stays clean.
+The feedback is delivered via Claude Code's `systemMessage` channel, so it's
+visible to you but **never added to the model's context** — Claude only ever
+sees your original wording, and your conversation stays clean.
 
 ## Install
 
@@ -45,19 +57,21 @@ Run the bundled setup command (after a session restart):
 /redpen:setup
 ```
 
-This asks two questions:
+This asks three questions:
 
 | Question | Choices |
 |---|---|
-| Language | `English` · `中文 (Chinese)` · `Español (Spanish)` |
-| Model    | `Sonnet` (default, recommended) · `Haiku` · `Opus` |
+| Language | `English` · `中文 (Chinese)` · `Español (Spanish)` · `日本語 (Japanese)` |
+| Model    | `Haiku` (default, recommended) · `Sonnet` · `Opus` |
+| Native style line | `On` (default, recommended) · `Off` |
 
-The chosen values are written to `~/.redpen.config`. You can also edit
+The chosen values are written to `~/.claude/redpen.config`. You can also edit
 that file by hand:
 
 ```
 LANGUAGE=chinese
-MODEL=sonnet
+MODEL=haiku
+SHOW_HINT=on
 ```
 
 `MODEL` accepts the generic family aliases `haiku` / `sonnet` / `opus` —
@@ -81,9 +95,10 @@ The model scores your original prompt on a 0–100 scale:
 | 1–49    | Broken, hard to read |
 | **0**   | Contains ANY character from a non-target language (even one foreign letter forces 0, regardless of the rest) |
 
-The rewrite always runs — even on score 0 — and produces target-language
-output while preserving brand names, file paths, code identifiers, and
-function names verbatim.
+The correction always runs — even on score 0 — so you always see a
+target-language version, even when your input was in a different language.
+Brand names, file paths, code identifiers, and function names are preserved
+verbatim.
 
 ## What gets skipped
 
@@ -166,10 +181,10 @@ Key design choices:
 
 ## Limitations
 
-- Adds ~1.3–6s of latency before your prompt reaches the model (median ~2.2s
-  with Sonnet on the OAuth/Pro auth path, measured over a 35-prompt bench
-  varying from 7 to 523 chars). Latency scales mildly with prompt length
-  (short ~1.8s → x-long ~5.6s).
+- Adds ~1–3s of latency before your prompt reaches the model (median ~1.2s
+  with Haiku, ~2.2s with Sonnet, on the OAuth/Pro auth path, measured over a
+  35-prompt bench varying from 7 to 523 chars). Latency scales mildly with
+  prompt length.
 - **Haiku gets a special-case optimization stack.** Haiku 4.5 forces adaptive
   extended thinking even with `--effort low` — out of the box, median latency
   is 9s (p95 32s) and output explodes to 742 tokens median (p95 3771). When
@@ -225,3 +240,9 @@ User-level files (created on first run):
 ## License
 
 MIT — see `LICENSE`.
+
+## Acknowledgements
+
+Inspired by [jiang1997/claude-code-language-coach](https://github.com/jiang1997/claude-code-language-coach)
+— thanks to the original author for the idea of using a UserPromptSubmit hook
+to coach the user's writing inside Claude Code.

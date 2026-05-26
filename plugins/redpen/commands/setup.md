@@ -10,7 +10,7 @@ explore the codebase, do not run other commands, do not summarise.
 
 Read `~/.claude/redpen.config`. Parse:
 - `LANGUAGE=<...>` (default: `english`)
-- `MODEL=<...>` (default: `sonnet`)
+- `MODEL=<...>` (default: `haiku`)
 - `SHOW_HINT=<on|off>` (default: `on`)
 
 Remember as `CURRENT_LANGUAGE`, `CURRENT_MODEL`, `CURRENT_SHOW_HINT`.
@@ -55,12 +55,13 @@ the four languages above.)
 - header: `Model`
 - multiSelect: false
 - options (exactly these three, in this order; ALWAYS append ` (Recommended)`
-  to `Sonnet`, regardless of `CURRENT_MODEL`. Sonnet is the objectively
-  recommended choice for this plugin — fastest in practice and balanced
-  quality. Do NOT use `(Recommended)` to indicate the current selection;
-  it is a recommendation, not a state marker):
-  - `Sonnet` — Balanced quality and latency. Fastest in practice (no forced thinking).
-  - `Haiku` — Cheapest, but slower than Sonnet on this task (Haiku 4.5 forces adaptive thinking → ~3× more tokens, ~3× the wall-clock).
+  to `Haiku`, regardless of `CURRENT_MODEL`. Haiku is the objectively
+  recommended choice for this plugin — cheapest and fastest after the
+  plugin's prompt-cache optimization stack (47% cheaper than Sonnet, 26%
+  faster on p80 latency). Do NOT use `(Recommended)` to indicate the current
+  selection; it is a recommendation, not a state marker):
+  - `Haiku` — Cheapest and fastest on this task after the plugin's optimization stack (DISABLE_THINKING + few-shot prompt cache).
+  - `Sonnet` — Balanced quality and latency.
   - `Opus` — Smartest, most expensive.
 
 (AskUserQuestion auto-appends an `Other` option. UNLIKE the language question,
@@ -100,7 +101,7 @@ Model:
   `claude-sonnet-4-5-20250929`, or any model id `claude --model` accepts).
   We pass it straight through to `claude --model <value>` at hook time,
   so any string the CLI accepts will work.
-- `Other` with an empty / whitespace-only value → `sonnet` (fall back to
+- `Other` with an empty / whitespace-only value → `haiku` (fall back to
   default).
 
 Native hint:
@@ -132,9 +133,10 @@ LANGUAGE=<new language>
 # aliases are recommended — they auto-resolve to the latest released
 # version of each family, so this config keeps working across model
 # releases without a plugin update:
-#   sonnet   — balanced; fastest in practice (default, recommended)
-#   haiku    — cheapest, but Haiku 4.5 forces adaptive thinking,
-#              so on coach prompts it's ~3× slower than Sonnet
+#   haiku    — cheapest and fastest after the plugin's optimization
+#              stack: DISABLE_THINKING + a few-shot prompt that lands
+#              in Haiku 4.5's ~4096-token prompt cache (default, recommended)
+#   sonnet   — balanced quality and latency
 #   opus     — smartest, most expensive
 # You can also pin a specific version explicitly, e.g.
 #   MODEL=claude-haiku-4-5-20251001

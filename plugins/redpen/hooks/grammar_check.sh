@@ -89,7 +89,7 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
 fi
 
 LANGUAGE="english"
-MODEL="sonnet"
+MODEL="haiku"
 SHOW_HINT="on"
 # shellcheck disable=SC1090
 [[ -r "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
