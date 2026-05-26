@@ -83,6 +83,97 @@ accepts will work. Pick `Other` in `/redpen:setup` to type a
 custom value. Set `MODEL=` (empty) to follow whatever Claude Code's
 `/model` is currently set to instead.
 
+## Codex CLI version
+
+A sibling plugin `redpen-codex` runs the same coaching workflow inside
+OpenAI's Codex CLI. Architecture is identical (UserPromptSubmit hook +
+systemMessage emit); the differences are:
+
+| | Claude Code (`redpen`) | Codex CLI (`redpen-codex`) |
+|---|---|---|
+| Config | `~/.claude/redpen.config` | `~/.codex/redpen.config` |
+| Default model | `haiku` (alias), user-configurable via `/redpen:setup` | `gpt-5.4-mini`, **locked in v0.3.0** (only model that works on ChatGPT-account Codex auth — edit `plugins/redpen-codex/hooks/grammar_check.sh` to override) |
+| Setup invoke | `/redpen:setup` | `$redpen-setup` (Codex skill — TUI only) |
+| Hook target | `claude -p` | `codex exec` |
+| Output layout | multi-line (score / divider / native style) | single line (`[N] <text>  →  <native style>`) — Codex's systemMessage channel is a single-line toast that strips all newlines |
+
+### Install
+
+```sh
+# Add this repo as a Codex marketplace:
+codex plugin marketplace add 12og3r/redpen
+
+# Install the Codex plugin:
+codex plugin add redpen-codex
+```
+
+**Defaults**: out of the box (no config file), redpen-codex coaches in
+**English** with the **native-style hint on**. Send any prompt and you
+should see a `[NN] <rewrite>  →  <native-style>` line. No setup
+required.
+
+**To change language or turn off the native-style hint**, either:
+
+- Edit `~/.codex/redpen.config` by hand (just 2 lines — see the example
+  in [plugins/redpen-codex/skills/setup/SKILL.md](plugins/redpen-codex/skills/setup/SKILL.md)),
+  OR
+- In a Codex TUI session, type `$redpen-setup` — a conversational
+  wizard that walks two numbered questions and writes the file for you.
+
+Config lives at `~/.codex/redpen.config` (independent from the Claude
+Code plugin's `~/.claude/redpen.config`, so both plugins can be
+installed side-by-side without colliding).
+
+### Known limitations
+
+- **Single-line output only.** Codex's `systemMessage` hook channel renders
+  as a single-line warning toast that strips newlines (verified empirically
+  — `\n`, `\n\n`, `\r`, `<br>`, U+2028, markdown hard break, all collapse).
+  The Codex plugin therefore renders the score, divider, and native-style
+  hint on one line with a `→` separator. Claude Code keeps its richer
+  three-line layout.
+- **Model is locked to `gpt-5.4-mini` in v0.3.0.** Empirically, it's the
+  only model that works on the default ChatGPT-account Codex auth —
+  `gpt-4o-mini` / `gpt-5-mini` / `gpt-5` / `gpt-5-codex` all return
+  `model not supported`. The `redpen-setup` skill therefore doesn't ask
+  about model. To override (e.g. when running with `OPENAI_API_KEY`),
+  edit the `MODEL=` line in
+  `plugins/redpen-codex/hooks/grammar_check.sh` directly.
+- **Skills are TUI-only.** The `$redpen-setup` skill only fires inside the
+  interactive Codex TUI. In `codex exec` non-interactive mode the skill
+  invocation does nothing; users on that path should edit
+  `~/.codex/redpen.config` by hand instead.
+- **No `--no-tools` analog in `codex exec`** — tool definitions still
+  inflate the prompt context (~5–7k tokens observed) vs. the Claude Code
+  version. Latency and cost are higher per coach turn. Stick with
+  `gpt-5.4-mini` (the default) if you care about cost.
+- **`codex exec` flag stack is empirical**. We use `--ephemeral`,
+  `--ignore-user-config`, `--ignore-rules`, `--skip-git-repo-check`,
+  `--sandbox read-only`, `-c model_reasoning_effort=low`. The combination
+  works on Codex 0.133.0 + ChatGPT-account auth (verified end-to-end
+  manually). If something is slow on your machine, file an issue with
+  timings.
+- **Latency floor is ~5s per coach turn.** Empirically measured on
+  Codex 0.133.0 + ChatGPT-account auth + gpt-5.4-mini. Breakdown: codex
+  CLI startup ~50ms, the rest is OpenAI network + model inference and
+  is per-call. Unlike the Claude Code version (where SessionStart
+  prewarm caches V8 bytecode and saves ~5s per call), there's nothing
+  to prewarm here — `codex exec` doesn't have CLI-level overhead to
+  amortize. `-c model_reasoning_effort=minimal` is faster (~3s) but
+  produces empty output (verified — model refuses to generate at that
+  effort level), so unusable. Routes for faster turnaround if you need
+  it: switch to `OPENAI_API_KEY` auth + direct API call (bypass the
+  codex wrapper), or run a local model via `--oss --local-provider
+  ollama` (loses quality).
+
+### Developing
+
+If you edit any file in `plugins/shared/`, run `make sync-shared` to copy
+the changes into `plugins/redpen/shared/` and `plugins/redpen-codex/shared/`
+(both plugins bundle their own copy of `shared/` so marketplace installs
+are self-contained). `make check-shared` flags drift — wire it into CI if
+you have it.
+
 ## Scoring rubric
 
 The model scores your original prompt on a 0–100 scale:

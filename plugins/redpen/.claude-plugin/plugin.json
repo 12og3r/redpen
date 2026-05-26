@@ -1,7 +1,7 @@
 {
   "name": "redpen",
   "description": "Scores and rewrites every user prompt in your chosen target language (English, Chinese, Spanish, or Japanese) via a UserPromptSubmit hook. Feedback is shown to you only, not added to the model's context.",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "author": {
     "name": "roger.kwan"
   },
