@@ -5,8 +5,13 @@
 # emitted as JSON `systemMessage` — visible to the user, NOT added to the
 # model's context.
 #
-# Pre-LLM logic only in this commit (Task 5). The codex exec call and
-# diff rendering land in Task 6.
+# Like the Claude Code version, the call adds noticeable latency because
+# the headless `codex exec` invocation has to bootstrap a wrapper. We
+# mitigate via the minimal-startup flag stack (--ephemeral,
+# --ignore-user-config, --ignore-rules, --skip-git-repo-check,
+# --sandbox read-only, -c model_reasoning_effort=low). Codex has no
+# --no-tools analog so tool definitions still bloat context ~11k tokens;
+# Task 9 bench will quantify the actual latency floor.
 
 set -u
 
@@ -140,11 +145,12 @@ CODEX_BIN="$(command -v codex || true)"
 if [[ -z "$CODEX_BIN" ]]; then log "skip: codex CLI not on PATH"; exit 0; fi
 
 # --- Build the coach system prompt -----------------------------------------
-# Share the four-language SYSTEM_INSTR strings with the Claude Code plugin
-# via plugins/shared/coach_prompts.sh. Resolution path is the same shape
-# as the Claude Code hook (see plugins/redpen/hooks/grammar_check.sh):
-# unconditional BASH_SOURCE-relative for in-repo dev installs;
-# install-time packaging is TBD in Task 8.
+# coach_prompts.sh lives at plugins/shared/, two dirs up from this hook.
+# NOTE: install-time packaging is TBD — when the plugin is installed via
+# /plugin install, the marketplace installer copies plugins/redpen-codex/ but
+# not plugins/shared/, so this BASH_SOURCE-derived path resolves correctly
+# only for in-repo dev installs. Task 8 (README/marketplace) will sort
+# out how to package shared/ for end users.
 _REDPEN_SHARED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared" && pwd)" \
   || { log "fatal: cannot resolve plugins/shared/ relative to hook"; exit 0; }
 # shellcheck disable=SC1091
@@ -197,7 +203,8 @@ log "clean_cwd=${CLEAN_CWD:-<none, using current>}"
 
 # --- Build codex exec args -------------------------------------------------
 # Minimal-startup flag stack — analog to plugins/redpen/hooks/grammar_check.sh's
-# claude -p invocation. Per Task 3 research:
+# claude -p invocation. Per Task 3 research (listed in append order):
+#   --model "$MODEL"          chosen via setup; defaults to gpt-4o-mini
 #   --ephemeral               no transcript persistence (essential for a hook)
 #   --ignore-user-config      skip $CODEX_HOME/config.toml (faster startup)
 #   --ignore-rules            skip execpolicy .rules files
@@ -206,7 +213,6 @@ log "clean_cwd=${CLEAN_CWD:-<none, using current>}"
 #                             never needs them; defence in depth)
 #   -c model_reasoning_effort=low
 #                             suppress thinking tokens (latency + cost win)
-#   --model "$MODEL"          chosen via setup; defaults to gpt-4o-mini
 #
 # NOTE: Codex has no --no-tools / --tools "" analog, so tool definitions are
 # still injected into the context window. This is the largest known cost
