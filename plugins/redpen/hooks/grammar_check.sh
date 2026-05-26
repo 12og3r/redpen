@@ -166,11 +166,17 @@ CLAUDE_BIN="$(command -v claude || true)"
 if [[ -z "$CLAUDE_BIN" ]]; then log "skip: claude CLI not on PATH"; exit 0; fi
 
 # --- Build the coach system prompt -----------------------------------------
-_REDPEN_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_REDPEN_SHARED_DIR="${CLAUDE_PLUGIN_ROOT:+${CLAUDE_PLUGIN_ROOT}/../shared}"
-_REDPEN_SHARED_DIR="${_REDPEN_SHARED_DIR:-${_REDPEN_HOOK_DIR}/../../shared}"
+# coach_prompts.sh lives at plugins/shared/, two dirs up from this hook.
+# NOTE: install-time packaging is TBD — when the plugin is installed via
+# /plugin install, the marketplace installer copies plugins/redpen/ but
+# not plugins/shared/, so this BASH_SOURCE-derived path resolves correctly
+# only for in-repo dev installs. Task 8 (README/marketplace) will sort
+# out how to package shared/ for end users.
+_REDPEN_SHARED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared" && pwd)" \
+  || { log "fatal: cannot resolve plugins/shared/ relative to hook"; exit 0; }
 # shellcheck disable=SC1091
-source "${_REDPEN_SHARED_DIR}/coach_prompts.sh"
+source "${_REDPEN_SHARED_DIR}/coach_prompts.sh" \
+  || { log "fatal: cannot source coach_prompts.sh from ${_REDPEN_SHARED_DIR}"; exit 0; }
 set_coach_system_instr "$LANGUAGE"
 
 # Opus-only: swap to a 4× shorter system prompt. Opus 4.7 follows rules
