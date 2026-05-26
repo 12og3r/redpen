@@ -92,7 +92,7 @@ systemMessage emit); the differences are:
 | | Claude Code (`redpen`) | Codex CLI (`redpen-codex`) |
 |---|---|---|
 | Config | `~/.claude/redpen.config` | `~/.codex/redpen.config` |
-| Default model | `haiku` (alias) | `gpt-5.4-mini` |
+| Default model | `haiku` (alias), user-configurable via `/redpen:setup` | `gpt-5.4-mini`, **locked in v0.1.0** (only model that works on ChatGPT-account Codex auth — edit `plugins/redpen-codex/hooks/grammar_check.sh` to override) |
 | Setup invoke | `/redpen:setup` | `$redpen-setup` (Codex skill — TUI only) |
 | Hook target | `claude -p` | `codex exec` |
 | Output layout | multi-line (score / divider / native style) | single line (`[N] <text>  →  <native style>`) — Codex's systemMessage channel is a single-line toast that strips all newlines |
@@ -120,12 +120,13 @@ installed side-by-side without colliding).
   The Codex plugin therefore renders the score, divider, and native-style
   hint on one line with a `→` separator. Claude Code keeps its richer
   three-line layout.
-- **Model availability depends on auth.** Codex authed with a ChatGPT
-  account (default `codex auth login`) only supports the `gpt-5.4` family —
-  `gpt-4o-mini` / `gpt-5-mini` / `gpt-5` / `gpt-5-codex` return
-  `model not supported`. The plugin defaults to `gpt-5.4-mini`, which works
-  in both modes. To use the other models, set `OPENAI_API_KEY` instead of
-  ChatGPT-account auth.
+- **Model is locked to `gpt-5.4-mini` in v0.1.0.** Empirically, it's the
+  only model that works on the default ChatGPT-account Codex auth —
+  `gpt-4o-mini` / `gpt-5-mini` / `gpt-5` / `gpt-5-codex` all return
+  `model not supported`. The `redpen-setup` skill therefore doesn't ask
+  about model. To override (e.g. when running with `OPENAI_API_KEY`),
+  edit the `MODEL=` line in
+  `plugins/redpen-codex/hooks/grammar_check.sh` directly.
 - **Skills are TUI-only.** The `$redpen-setup` skill only fires inside the
   interactive Codex TUI. The first-run nudge will still fire in `codex exec`
   non-interactive mode, but the model can't auto-invoke the skill there —

@@ -111,10 +111,17 @@ sys.stdout.write(json.dumps({
 fi
 
 LANGUAGE="english"
-MODEL="gpt-5.4-mini"
 SHOW_HINT="on"
 # shellcheck disable=SC1090
 [[ -r "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
+# MODEL is locked to gpt-5.4-mini in v0.1.0 — the only Codex model verified
+# to work on ChatGPT-account auth (the default `codex auth login` mode).
+# gpt-4o-mini / gpt-5 / gpt-5-mini / gpt-5-codex all return
+# "model not supported when using Codex with a ChatGPT account" on the
+# default auth path. To override (e.g. when running with OPENAI_API_KEY
+# set so the API path is used), edit this line directly — the setup
+# skill no longer asks about model.
+MODEL="gpt-5.4-mini"
 SHOW_HINT="$(printf '%s' "$SHOW_HINT" | tr 'A-Z' 'a-z')"
 case "$SHOW_HINT" in off|false|0|no) SHOW_HINT="off" ;; *) SHOW_HINT="on" ;; esac
 LANGUAGE="$(printf '%s' "$LANGUAGE" | tr 'A-Z' 'a-z')"
