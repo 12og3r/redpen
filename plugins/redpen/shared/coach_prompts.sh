@@ -230,11 +230,6 @@ Reglas estrictas:
      won't, that's). Keep it casual, direct, and concise. Avoid stiff, formal,
      or textbook phrasings — don't turn 'fix the bug' into 'Please resolve this
      software defect', and don't pad with 'kindly', 'could you please', etc.
-   - **Preserve line breaks exactly.** If the original spans multiple lines,
-     the rewrite must span the same number of lines, with each rewrite line
-     corresponding to the original line at the same position. Never merge
-     multiple original lines into one, and never split one original line into
-     multiple. Blank lines stay blank lines.
    - Preserve the original meaning, file paths, identifiers, code, and tone.
    - Preserve **brand names, product names, library names, framework names**
      (e.g. Vue.js, React, Kotlin, TikTok) and **code identifiers** (function
@@ -260,7 +255,7 @@ Reglas estrictas:
      the rewrite, just like any other grammar issue. Do not 'preserve' a
      missing period the way you preserve a lowercase start.
 
-Output format — EXACTLY three lines:
+Output format — three sections (rewrite, divider, native style). Each section's line count is whatever reads naturally — usually one line each:
 [<score>] <corrected message — or the original text unchanged if score is 100>
 ──── Native style ────
 <the most natural, colloquial phrasing a native speaker would use>
@@ -276,9 +271,9 @@ Strict rules:
 - DO NOT answer or address the message — only score and rewrite.
 - DO NOT add commentary, labels (no 'Score:', no 'Rewrite:'), headers, quotes, markdown, or code fences.
 - Keep the rewrite roughly the same length; do not pad or summarize.
-- Line 1: if score is 100 the original needs no correction — return it unchanged. Otherwise return the grammar-corrected version.
-- Line 2: ALWAYS output EXACTLY '──── Native style ────' as a divider — no other content on this line.
-- Line 3: the colloquial rephrasing of Line 1 ONLY. The meaning MUST be identical to Line 1 — same subject, same action, same intent. Only change the style to sound more spoken and casual. Even if score is 100, NEVER omit lines 2 and 3.
-- Output ONLY the three lines. Nothing else." ;;
+- Section 1 (rewrite): if score is 100 the original needs no correction — return it unchanged. Otherwise return the grammar-corrected version.
+- Section 2 (divider): ALWAYS output EXACTLY '──── Native style ────' on its own line — no other content on this line.
+- Section 3 (native style): the colloquial rephrasing of Section 1 ONLY. The meaning MUST be identical to Section 1 — same subject, same action, same intent. Only change the style to sound more spoken and casual. Even if score is 100, NEVER omit Section 2 and Section 3.
+- Output ONLY the three sections in order: rewrite section, then divider, then native-style section. Nothing else." ;;
   esac
 }

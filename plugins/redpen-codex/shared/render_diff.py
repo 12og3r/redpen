@@ -204,12 +204,24 @@ if m:
             INDENT_COLS = 2
             INDENT = " " * INDENT_COLS
             term_cols = terminal_width()
-            out = INDENT + out  # row 1 indent (rows 2, 3 indented via pad below)
 
             def pad_to_row_end(visible_col):
                 return (term_cols - visible_col) if visible_col > 0 else 0
 
-            # Row 1 → Row 2: fill row 1 to its end + INDENT on row 2.
+            # Body may contain literal `\n` when the user's prompt was
+            # multi-line — the diff renderer preserves the original line
+            # structure. Codex's toast strips those `\n` directly, which
+            # would collapse the body into one visual row. Synthesize the
+            # line breaks via pad-to-row-end + INDENT, same trick used
+            # for the divider / native-style rows below.
+            body_lines = out.split("\n")
+            out = INDENT + body_lines[0]
+            for line in body_lines[1:]:
+                cur_col = visual_width(out) % term_cols
+                out += (" " * pad_to_row_end(cur_col)) + INDENT + line
+
+            # Last body row → divider row: fill last body row to its end
+            # + INDENT on the divider row.
             cur_col = visual_width(out) % term_cols
             pad1 = pad_to_row_end(cur_col) + INDENT_COLS
 
@@ -220,14 +232,25 @@ if m:
             cur_col_after_div = (INDENT_COLS + divider_visible) % term_cols
             pad2 = pad_to_row_end(cur_col_after_div) + INDENT_COLS
 
-            hint_body_str = " ".join(
-                color_line(ln) for ln in hint.rstrip().split("\n")
-            )
+            # Hint may itself span multiple lines when the model decides
+            # the native-style rephrasing reads better split. Each hint
+            # line gets its own visual row via the same pad-to-row-end
+            # + INDENT trick used for the body above.
+            hint_lines_raw = [ln for ln in hint.rstrip().split("\n")]
 
             if divider_str:
-                out += (" " * pad1) + divider_str + (" " * pad2) + hint_body_str
-            else:
-                out += (" " * pad1) + hint_body_str
+                out += (" " * pad1) + divider_str
+            # If there is no divider, the first hint line transitions
+            # directly from the body — pad1 was already computed for that.
+            first_pad = pad2 if divider_str else pad1
+
+            for idx, ln in enumerate(hint_lines_raw):
+                colored = color_line(ln)
+                if idx == 0:
+                    out += (" " * first_pad) + colored
+                else:
+                    cur_col = visual_width(out) % term_cols
+                    out += (" " * pad_to_row_end(cur_col)) + INDENT + colored
         else:
             lines = []
             if hint_label:
