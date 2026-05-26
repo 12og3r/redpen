@@ -64,17 +64,20 @@ case "$PROMPT" in
 esac
 
 # Handle command-style prefixes:
-#   /cmd                → pure slash command, skip
+#   /cmd                → pure slash command, skip (Codex built-ins: /init, /diff, …)
 #   /cmd <text>         → slash command WITH args; coach just the args
+#   $cmd                → pure skill invocation, skip (Codex skills: $redpen-setup, …)
+#   $cmd <text>         → skill invocation WITH args; coach just the args
 #   !cmd or !cmd <text> → shell passthrough, always skip
 case "$PROMPT" in
-  /*' '*)
+  /*' '*|\$*' '*)
     PROMPT="${PROMPT#* }"
     PROMPT="${PROMPT#"${PROMPT%%[![:space:]]*}"}"
-    log "slash command with args — coaching: [$(printf '%s' "$PROMPT" | head -c 80)]"
-    if [[ -z "$PROMPT" ]]; then log "skip: empty after slash"; exit 0; fi
+    log "command with args — coaching: [$(printf '%s' "$PROMPT" | head -c 80)]"
+    if [[ -z "$PROMPT" ]]; then log "skip: empty after command"; exit 0; fi
     ;;
   /*) log "skip: pure slash command"; exit 0 ;;
+  \$*) log "skip: pure skill invocation"; exit 0 ;;
   !*) log "skip: shell passthrough"; exit 0 ;;
 esac
 

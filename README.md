@@ -213,6 +213,8 @@ To avoid burning model calls on inputs that aren't natural-language prose:
 - Empty prompts
 - Pure slash commands (e.g. `/help`) — when a slash command is followed by
   space-separated args, those args ARE coached
+- (Codex only) Pure skill invocations (e.g. `$redpen-setup`) — same args
+  rule as slash commands; the `$cmd <text>` form coaches just the args
 - Shell passthroughs (`!ls`, `!ls -la`)
 - Prompts longer than `MAX_PROMPT_CHARS` characters (default `2000`). The
   UserPromptSubmit hook doesn't receive paste metadata from the host CLI, so
