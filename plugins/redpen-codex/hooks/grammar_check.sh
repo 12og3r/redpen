@@ -88,7 +88,7 @@ LANGUAGE="english"
 SHOW_HINT="on"
 # shellcheck disable=SC1090
 [[ -r "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
-# MODEL is locked to gpt-5.4-mini in v0.1.0 — the only Codex model verified
+# MODEL is locked to gpt-5.4-mini in v0.3.0 — the only Codex model verified
 # to work on ChatGPT-account auth (the default `codex auth login` mode).
 # gpt-4o-mini / gpt-5 / gpt-5-mini / gpt-5-codex all return
 # "model not supported when using Codex with a ChatGPT account" on the

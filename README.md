@@ -92,7 +92,7 @@ systemMessage emit); the differences are:
 | | Claude Code (`redpen`) | Codex CLI (`redpen-codex`) |
 |---|---|---|
 | Config | `~/.claude/redpen.config` | `~/.codex/redpen.config` |
-| Default model | `haiku` (alias), user-configurable via `/redpen:setup` | `gpt-5.4-mini`, **locked in v0.1.0** (only model that works on ChatGPT-account Codex auth — edit `plugins/redpen-codex/hooks/grammar_check.sh` to override) |
+| Default model | `haiku` (alias), user-configurable via `/redpen:setup` | `gpt-5.4-mini`, **locked in v0.3.0** (only model that works on ChatGPT-account Codex auth — edit `plugins/redpen-codex/hooks/grammar_check.sh` to override) |
 | Setup invoke | `/redpen:setup` | `$redpen-setup` (Codex skill — TUI only) |
 | Hook target | `claude -p` | `codex exec` |
 | Output layout | multi-line (score / divider / native style) | single line (`[N] <text>  →  <native style>`) — Codex's systemMessage channel is a single-line toast that strips all newlines |
@@ -132,7 +132,7 @@ installed side-by-side without colliding).
   The Codex plugin therefore renders the score, divider, and native-style
   hint on one line with a `→` separator. Claude Code keeps its richer
   three-line layout.
-- **Model is locked to `gpt-5.4-mini` in v0.1.0.** Empirically, it's the
+- **Model is locked to `gpt-5.4-mini` in v0.3.0.** Empirically, it's the
   only model that works on the default ChatGPT-account Codex auth —
   `gpt-4o-mini` / `gpt-5-mini` / `gpt-5` / `gpt-5-codex` all return
   `model not supported`. The `redpen-setup` skill therefore doesn't ask

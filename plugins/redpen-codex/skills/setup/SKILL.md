@@ -7,7 +7,7 @@ allowed-tools: Read, Write
 The user invoked the redpen-setup skill. Follow these steps EXACTLY. Do not
 explore the codebase, do not run other commands, do not summarise.
 
-> **Note on model:** v0.1.0 locks the OpenAI model to `gpt-5.4-mini` — the
+> **Note on model:** v0.3.0 locks the OpenAI model to `gpt-5.4-mini` — the
 > only model verified to work on ChatGPT-account Codex auth (the default
 > `codex auth login` mode). The setup skill therefore does NOT ask about
 > model. To override (e.g. when running with `OPENAI_API_KEY` set), edit
@@ -86,7 +86,7 @@ LANGUAGE=<new language>
 # with a more idiomatic, colloquial rephrasing. on (default) | off.
 SHOW_HINT=<new show_hint>
 #
-# NOTE: MODEL is locked to gpt-5.4-mini in v0.1.0 (the only model that
+# NOTE: MODEL is locked to gpt-5.4-mini in v0.3.0 (the only model that
 # works on ChatGPT-account Codex auth). To override, edit the MODEL= line
 # in plugins/redpen-codex/hooks/grammar_check.sh directly.
 ```
