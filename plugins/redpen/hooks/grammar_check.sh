@@ -12,6 +12,7 @@
 set -u
 
 LOG_FILE="${HOME}/.claude/redpen.log"
+mkdir -p "$(dirname "$LOG_FILE")"
 log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG_FILE"; }
 log "==== hook fired (pid=$$, recursion=${REDPEN_ACTIVE:-0}) ===="
 
@@ -170,8 +171,8 @@ if [[ -z "$CLAUDE_BIN" ]]; then log "skip: claude CLI not on PATH"; exit 0; fi
 # NOTE: install-time packaging is TBD — when the plugin is installed via
 # /plugin install, the marketplace installer copies plugins/redpen/ but
 # not plugins/shared/, so this BASH_SOURCE-derived path resolves correctly
-# only for in-repo dev installs. Task 8 (README/marketplace) will sort
-# out how to package shared/ for end users.
+# only for in-repo dev installs. shared/ packaging for marketplace installs
+# is unresolved — see Known Limitations in README.
 _REDPEN_SHARED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared" && pwd)" \
   || { log "fatal: cannot resolve plugins/shared/ relative to hook"; exit 0; }
 # shellcheck disable=SC1091

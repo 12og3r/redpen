@@ -55,7 +55,7 @@ language = os.environ.get("LT_LANGUAGE", "english")
 # (see IS_HAIKU block in grammar_check.sh) to prevent misjudging clean
 # English as score 0. The user does not need to see it — strip it before
 # rendering.
-if raw.startswith("ANALYSIS"):
+if raw.startswith("ANALYSIS:"):
     _, _, raw = raw.partition("\n")
     raw = raw.lstrip()
 

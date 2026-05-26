@@ -11,7 +11,7 @@
 # --ignore-user-config, --ignore-rules, --skip-git-repo-check,
 # --sandbox read-only, -c model_reasoning_effort=low). Codex has no
 # --no-tools analog so tool definitions still bloat context ~11k tokens;
-# Task 9 bench will quantify the actual latency floor.
+# actual latency floor is unbenched — see README's Codex CLI section.
 
 set -u
 
@@ -20,7 +20,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
 log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG_FILE"; }
 log "==== hook fired (pid=$$, recursion=${REDPEN_ACTIVE:-0}) ===="
 
-# Recursion guard: our own `codex exec` invocation (Task 6) may re-trigger
+# Recursion guard: our own `codex exec` invocation may re-trigger
 # this hook in the nested headless session. Bail out fast.
 if [[ "${REDPEN_ACTIVE:-0}" == "1" ]]; then
   log "skip: recursion guard"
@@ -149,8 +149,8 @@ if [[ -z "$CODEX_BIN" ]]; then log "skip: codex CLI not on PATH"; exit 0; fi
 # NOTE: install-time packaging is TBD — when the plugin is installed via
 # /plugin install, the marketplace installer copies plugins/redpen-codex/ but
 # not plugins/shared/, so this BASH_SOURCE-derived path resolves correctly
-# only for in-repo dev installs. Task 8 (README/marketplace) will sort
-# out how to package shared/ for end users.
+# only for in-repo dev installs. shared/ packaging for marketplace installs
+# is unresolved — see Known Limitations in README.
 _REDPEN_SHARED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared" && pwd)" \
   || { log "fatal: cannot resolve plugins/shared/ relative to hook"; exit 0; }
 # shellcheck disable=SC1091
@@ -216,8 +216,7 @@ log "clean_cwd=${CLEAN_CWD:-<none, using current>}"
 #
 # NOTE: Codex has no --no-tools / --tools "" analog, so tool definitions are
 # still injected into the context window. This is the largest known cost
-# delta vs. the Claude Code version (~11k tokens of tool spec). Quantify in
-# Task 9 bench.
+# delta vs. the Claude Code version (~11k tokens of tool spec).
 ARGS=(exec)
 [[ -n "${MODEL:-}" ]] && ARGS+=(--model "$MODEL")
 ARGS+=(
