@@ -140,6 +140,18 @@ installed side-by-side without colliding).
   works on Codex 0.133.0 + ChatGPT-account auth (verified end-to-end
   manually). If something is slow on your machine, file an issue with
   timings.
+- **Latency floor is ~5s per coach turn.** Empirically measured on
+  Codex 0.133.0 + ChatGPT-account auth + gpt-5.4-mini. Breakdown: codex
+  CLI startup ~50ms, the rest is OpenAI network + model inference and
+  is per-call. Unlike the Claude Code version (where SessionStart
+  prewarm caches V8 bytecode and saves ~5s per call), there's nothing
+  to prewarm here — `codex exec` doesn't have CLI-level overhead to
+  amortize. `-c model_reasoning_effort=minimal` is faster (~3s) but
+  produces empty output (verified — model refuses to generate at that
+  effort level), so unusable. Routes for faster turnaround if you need
+  it: switch to `OPENAI_API_KEY` auth + direct API call (bypass the
+  codex wrapper), or run a local model via `--oss --local-provider
+  ollama` (loses quality).
 
 ### Developing
 
