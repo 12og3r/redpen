@@ -9,7 +9,32 @@ Env:
   ORIGINAL_PROMPT  — the user's original prompt
   LT_LANGUAGE      — one of english | chinese | spanish | japanese
 """
-import json, os, re, difflib
+import json, os, re, difflib, struct
+
+ANSI_RE = re.compile(r"\033\[[0-9;]*m")
+
+def visual_width(s):
+    plain = ANSI_RE.sub("", s)
+    n = 0
+    for ch in plain:
+        if ("一" <= ch <= "鿿"
+                or "　" <= ch <= "〿"
+                or "぀" <= ch <= "ヿ"
+                or "＀" <= ch <= "￯"):
+            n += 2
+        else:
+            n += 1
+    return n
+
+def terminal_width(default=80):
+    try:
+        import fcntl, termios
+        with open("/dev/tty", "rb") as tty:
+            packed = fcntl.ioctl(tty.fileno(), termios.TIOCGWINSZ, b"\0" * 8)
+            _, cols, _, _ = struct.unpack("hhhh", packed)
+            return cols if cols > 0 else default
+    except Exception:
+        return default
 
 RESET = "\033[0m"
 DEFAULT = "\033[1;36m"  # bold cyan — body default (every char is cyan unless overridden)
@@ -169,10 +194,40 @@ if m:
         single_line = os.environ.get("REDPEN_SINGLE_LINE", "") in ("1", "true", "yes", "on")
         hint_body_lines = [color_line(ln) for ln in hint.rstrip().split("\n")]
         if single_line:
-            # Drop the divider label entirely; use a colored arrow as the
-            # visual cue that what follows is the native-style version.
-            sep = f"  {HINT}→{RESET}  "
-            out += sep + " ".join(hint_body_lines)
+            # Codex's systemMessage toast strips literal `\n` (verified
+            # 2026-05) but preserves runs of spaces. We synthesize a 3-row
+            # layout — body / divider / native style — by padding each
+            # segment to end-of-row, letting natural terminal wrap break
+            # to the next visual row. The `warning:` prefix is wiped via
+            # `\r\033[2K` at print time (see end of file), so each row
+            # carries a 2-space left indent we manage ourselves.
+            INDENT_COLS = 2
+            INDENT = " " * INDENT_COLS
+            term_cols = terminal_width()
+            out = INDENT + out  # row 1 indent (rows 2, 3 indented via pad below)
+
+            def pad_to_row_end(visible_col):
+                return (term_cols - visible_col) if visible_col > 0 else 0
+
+            # Row 1 → Row 2: fill row 1 to its end + INDENT on row 2.
+            cur_col = visual_width(out) % term_cols
+            pad1 = pad_to_row_end(cur_col) + INDENT_COLS
+
+            divider_str = color_line(hint_label) if hint_label else ""
+            divider_visible = visual_width(hint_label) if hint_label else 0
+
+            # Row 2 → Row 3: fill row 2 to its end + INDENT on row 3.
+            cur_col_after_div = (INDENT_COLS + divider_visible) % term_cols
+            pad2 = pad_to_row_end(cur_col_after_div) + INDENT_COLS
+
+            hint_body_str = " ".join(
+                color_line(ln) for ln in hint.rstrip().split("\n")
+            )
+
+            if divider_str:
+                out += (" " * pad1) + divider_str + (" " * pad2) + hint_body_str
+            else:
+                out += (" " * pad1) + hint_body_str
         else:
             lines = []
             if hint_label:
@@ -180,4 +235,10 @@ if m:
             lines.extend(hint_body_lines)
             out += "\n" + "\n".join(lines)
 
-print(json.dumps({"systemMessage": "\n" + out}, ensure_ascii=False))
+# Experimental: try to wipe Codex's "warning: " prefix when in single-line
+# (Codex) mode. \r returns to col 0, ESC[2K erases the current line. If
+# Codex's TUI passes these through to the terminal, the prefix gets
+# overwritten. If it filters them, no visible change.
+single_line_mode = os.environ.get("REDPEN_SINGLE_LINE", "") in ("1", "true", "yes", "on")
+prefix_wipe = "\r\033[2K" if single_line_mode else ""
+print(json.dumps({"systemMessage": prefix_wipe + "\n" + out}, ensure_ascii=False))

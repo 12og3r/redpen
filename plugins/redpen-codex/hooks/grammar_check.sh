@@ -227,11 +227,12 @@ log "rewrite[0..120]=$(printf '%s' "$REWRITTEN" | head -c 120)"
 if [[ -z "$REWRITTEN" ]]; then log "skip: empty rewrite"; exit 0; fi
 
 # --- Render and emit -------------------------------------------------------
-# REDPEN_SINGLE_LINE=1 → render_diff.py collapses the divider + native hint
-# into one line with a colored arrow separator. Codex's systemMessage
-# channel is a single-line warning toast that strips newlines (even \n\n),
-# so multi-line layout is impossible there; one-line is the only honest
-# rendering.
+# Codex's systemMessage toast strips `\n` entirely (verified 2026-05 with a
+# refreshed plugin cache) but DOES preserve runs of spaces — long lines
+# wrap via natural terminal wrap at COLUMNS. render_diff.py's
+# REDPEN_SINGLE_LINE=1 branch exploits that: it pads with spaces to reach
+# end-of-row, so the divider and native-style text each appear on their
+# own visual row. Net effect mirrors Claude Code's 3-line layout.
 OUTPUT_JSON="$(REWRITTEN="$REWRITTEN" ORIGINAL_PROMPT="$PROMPT" LT_LANGUAGE="$LANGUAGE" \
     REDPEN_SINGLE_LINE=1 \
     /usr/bin/python3 "${_REDPEN_SHARED_DIR}/render_diff.py")" \

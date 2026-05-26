@@ -95,7 +95,7 @@ systemMessage emit); the differences are:
 | Default model | `haiku` (alias), user-configurable via `/redpen:setup` | `gpt-5.4-mini`, **locked in v0.3.0** (only model that works on ChatGPT-account Codex auth — edit `plugins/redpen-codex/hooks/grammar_check.sh` to override) |
 | Setup invoke | `/redpen:setup` | `$redpen-setup` (Codex skill — TUI only) |
 | Hook target | `claude -p` | `codex exec` |
-| Output layout | multi-line (score / divider / native style) | single line (`[N] <text>  →  <native style>`) — Codex's systemMessage channel is a single-line toast that strips all newlines |
+| Output layout | multi-line (score / divider / native style) | single line (`[N] <text> ▍native▍ <native style>`, inverted-bg label as the visual break) — Codex's systemMessage channel is a single-line toast that strips all newlines |
 
 ### Install
 
