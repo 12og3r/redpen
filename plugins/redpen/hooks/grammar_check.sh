@@ -477,7 +477,233 @@ IMPORTANT — score validity:
 IMPORTANT — match the user's casing:
 - If the original starts with a lowercase letter, the rewrite MUST also start with a lowercase letter. Do NOT capitalize sentence-starts. Lowercase starts are NOT errors — they are the user's voice.
 - The pronoun 'I' is the ONLY exception: always capitalize it.
-- This rule applies ONLY to letter casing. Punctuation (periods, question marks, apostrophes in contractions like don't/it's) MUST still be added or fixed."
+- This rule applies ONLY to letter casing. Punctuation (periods, question marks, apostrophes in contractions like don't/it's) MUST still be added or fixed.
+
+
+ADDITIONAL EXAMPLES — edge cases that need careful handling:
+
+Input: 你好
+Output:
+ANALYSIS: non-Latin: yes (CJK '你好'); typos: n/a; grammar: n/a (foreign language)
+[0] hello
+──── Native style ────
+hey
+
+Input: fix 这个 bug
+Output:
+ANALYSIS: non-Latin: yes (CJK '这个'); typos: none; grammar: incomplete (mixed-language)
+[0] fix this bug
+──── Native style ────
+gotta fix this bug
+
+Input: how do i implement undo redo
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: minor (lowercase 'i', missing punctuation)
+[92] how do i implement undo redo?
+──── Native style ────
+how do I implement undo/redo?
+
+Input: wanna fix this
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: minor (casual contraction is fine; missing punctuation)
+[78] wanna fix this?
+──── Native style ────
+wanna fix this?
+
+Input: 部署完成后服务挂了
+Output:
+ANALYSIS: non-Latin: yes (CJK); typos: n/a; grammar: n/a (foreign language)
+[0] the service went down after deployment finished
+──── Native style ────
+service crashed right after we deployed it
+
+Input: 我想 refactor 这段代码
+Output:
+ANALYSIS: non-Latin: yes (CJK '我想' '这段代码'); typos: none; grammar: mixed-language
+[0] I want to refactor this code
+──── Native style ────
+I am gonna refactor this code
+
+Input: explain pub sub pattern
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: minor (missing article, missing hyphen, missing punctuation)
+[78] explain the pub-sub pattern.
+──── Native style ────
+can you explain how the pub-sub pattern works?
+
+Input: ok
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: none (one-word acknowledgement)
+[100] ok
+──── Native style ────
+got it
+
+
+EXTENDED EXAMPLES — more nuanced cases:
+
+Input: i recieve a error when running the script in production environment
+Output:
+ANALYSIS: non-Latin: no; typos: recieve (should be receive), missing article an; grammar: minor
+[75] i receive an error when running the script in the production environment
+──── Native style ────
+i am getting an error when running the script in production
+
+Input: 这段代码在生产环境下报错了不知道为什么
+Output:
+ANALYSIS: non-Latin: yes (CJK throughout); typos: n/a; grammar: n/a
+[0] this code throws an error in production and I do not know why
+──── Native style ────
+the code is crashing in prod and I have no clue why
+
+Input: pls help me fix the typescript compile error
+Output:
+ANALYSIS: non-Latin: no; typos: pls is chat-speak; grammar: minor
+[68] please help me fix the TypeScript compile error
+──── Native style ────
+can you help me fix this TypeScript compile error?
+
+Input: 用 Docker 部署 Vue.js app 有什么坑
+Output:
+ANALYSIS: non-Latin: yes (CJK 用, 有什么坑); typos: none; grammar: mixed-language
+[0] what are the common pitfalls when deploying a Vue.js app with Docker?
+──── Native style ────
+what should I watch out for when deploying Vue.js with Docker?
+
+Input: how do I write a unit test for async function in jest
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: minor (missing article an, missing punctuation)
+[88] how do I write a unit test for an async function in Jest?
+──── Native style ────
+how do I unit-test an async function with Jest?
+
+Input: my git push keeps failing why
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: minor (missing punctuation, question structure)
+[72] my git push keeps failing — why?
+──── Native style ────
+why does my git push keep failing?
+
+Input: api 返回 401 错误怎么 debug
+Output:
+ANALYSIS: non-Latin: yes (CJK 返回, 错误, 怎么); typos: none; grammar: mixed-language
+[0] how do I debug an API that returns a 401 error?
+──── Native style ────
+how do I figure out why the API is returning a 401?
+
+Input: setup a CI/CD pipeline with github actions
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: minor (missing article, GitHub capitalization)
+[82] set up a CI/CD pipeline with GitHub Actions
+──── Native style ────
+set up a CI/CD pipeline using GitHub Actions
+
+Input: 写个 sort 函数, 输入是 array of objects, 按 timestamp 排序
+Output:
+ANALYSIS: non-Latin: yes (CJK 写个, 输入是, 按, 排序); typos: none; grammar: mixed-language
+[0] write a sort function that takes an array of objects and sorts them by timestamp
+──── Native style ────
+write me a sort function — input is an array of objects, sort by timestamp
+
+Input: explain difference between map and forEach in javascript
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: minor (missing article the, missing punctuation)
+[80] explain the difference between map and forEach in JavaScript.
+──── Native style ────
+what is the difference between map and forEach in JavaScript?
+
+
+FURTHER EXAMPLES — additional coverage:
+
+Input: 帮我看下这段 python 代码哪里写错了
+Output:
+ANALYSIS: non-Latin: yes (CJK 帮我看下, 这段, 代码, 哪里写错了); typos: none; grammar: mixed-language
+[0] could you look at this Python code and tell me where it is wrong?
+──── Native style ────
+can you take a look at this Python code and tell me what is broken?
+
+Input: how to optimize this sql query its very slow
+Output:
+ANALYSIS: non-Latin: no; typos: its should be it is (contraction), SQL should be uppercase; grammar: missing punctuation
+[68] how do I optimize this SQL query? it is very slow.
+──── Native style ────
+this SQL query is super slow — any tips on optimizing it?
+
+Input: 在 React 里怎么管理全局状态
+Output:
+ANALYSIS: non-Latin: yes (CJK 在, 里怎么管理全局状态); typos: none; grammar: mixed-language
+[0] how do I manage global state in React?
+──── Native style ────
+what is the best way to handle global state in React?
+
+Input: writing tests for the new authentication flow
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: minor (sentence fragment, missing subject and punctuation)
+[78] writing tests for the new authentication flow.
+──── Native style ────
+i am writing tests for the new authentication flow.
+
+Input: 这个 webpack config 我看不懂
+Output:
+ANALYSIS: non-Latin: yes (CJK 这个, 我看不懂); typos: none; grammar: mixed-language
+[0] I do not understand this webpack config
+──── Native style ────
+this webpack config makes no sense to me
+
+Input: need to add caching layer to this api
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: minor (missing article a, missing subject I, API capitalization)
+[72] I need to add a caching layer to this API
+──── Native style ────
+I need to add a caching layer to this API
+
+Input: nginx 配置 reverse proxy 不工作
+Output:
+ANALYSIS: non-Latin: yes (CJK 配置, 不工作); typos: none; grammar: mixed-language
+[0] my nginx reverse proxy config is not working
+──── Native style ────
+my nginx reverse proxy is not working
+
+Input: please write a function that parses cron expressions
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: none
+[100] please write a function that parses cron expressions
+──── Native style ────
+can you write a function that parses cron expressions?
+
+Input: 重构后代码反而变慢了为什么
+Output:
+ANALYSIS: non-Latin: yes (CJK throughout); typos: n/a; grammar: n/a
+[0] why did the code get slower after refactoring?
+──── Native style ────
+why is the code slower after the refactor?
+
+Input: how to implement debounce in pure javascript
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: minor (missing punctuation, JavaScript capitalization)
+[88] how do I implement debounce in pure JavaScript?
+──── Native style ────
+how do you implement debounce in vanilla JavaScript?
+
+Input: deploy failed but no error message
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: minor (missing article the, missing subject I)
+[78] the deploy failed but there is no error message
+──── Native style ────
+deploy failed with no error message — what gives?
+
+Input: 数据库迁移脚本运行到一半挂了怎么办
+Output:
+ANALYSIS: non-Latin: yes (CJK throughout); typos: n/a; grammar: n/a
+[0] what should I do if a database migration script crashes halfway through?
+──── Native style ────
+what do I do when a DB migration script dies mid-run?
+
+Input: explain how virtual DOM works in react
+Output:
+ANALYSIS: non-Latin: no; typos: none; grammar: minor (React capitalization, missing punctuation)
+[82] explain how virtual DOM works in React.
+──── Native style ────
+can you explain how React virtual DOM works?"
 fi
 
 # Wrap the user message in unambiguous "this is text to rewrite, not a

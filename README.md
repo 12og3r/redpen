@@ -174,12 +174,16 @@ Key design choices:
   extended thinking even with `--effort low` — out of the box, median latency
   is 9s (p95 32s) and output explodes to 742 tokens median (p95 3771). When
   `MODEL=haiku*`, the hook sets `CLAUDE_CODE_DISABLE_THINKING=1` and appends
-  a visible `ANALYSIS:` reasoning line to the system prompt. That collapses
-  median latency to ~1s (p95 1.9s) and median output to 60 tokens, while
-  keeping the false-zero rate at 0/100 (a naked `DISABLE_THINKING` causes
-  Haiku to misjudge ~5% of clean English as score 0). Net result: Haiku is
-  competitive with Sonnet on latency for this task — but still slightly
-  noisier on scoring, so Sonnet stays the default.
+  a visible `ANALYSIS:` reasoning line plus ~20 few-shot examples to the
+  system prompt. That collapses median latency to ~1.2s (p95 2.8s) and
+  median output to 60 tokens, while keeping the false-zero rate at 0/100
+  (a naked `DISABLE_THINKING` causes Haiku to misjudge ~5% of clean English
+  as score 0). The few-shot examples push the system prompt past Haiku
+  4.5's ~4096-token prompt-cache threshold, so subsequent calls within the
+  cache window hit `cache_read` and pay 10% of input cost. Net result:
+  Haiku is the cheapest and fastest option for this task — 61% cheaper
+  than its uncached form, 47% cheaper than Sonnet, and 26% faster than
+  Sonnet on p80 latency.
 - **Opus gets a slim system prompt + Sonnet fallback.** When `MODEL=opus*`
   and `LANGUAGE=english`, the hook swaps to a 4× shorter system prompt
   (the verbose nuance / examples don't help Opus 4.7 follow the rules).
