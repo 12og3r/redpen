@@ -1,6 +1,6 @@
 ---
 name: redpen-setup
-description: Configure the redpen-codex plugin (language + native-style hint). Invoke when the user first installs redpen-codex, or any time they want to change which language they are practising or whether the native-style hint shows. Writes ~/.codex/redpen.config.
+description: Configure the redpen-codex plugin (language + native-style hint). Invoke when the user wants to change which language they are practising or whether the native-style hint shows. Writes ~/.codex/redpen.config.
 allowed-tools: Read, Write
 ---
 
@@ -21,12 +21,9 @@ Read `~/.codex/redpen.config`. Parse:
 
 Remember as `CURRENT_LANGUAGE` and `CURRENT_SHOW_HINT`.
 
-**First-run case:** if the config file does NOT exist (this is the user's
-first time running setup), treat `CURRENT_LANGUAGE` and `CURRENT_SHOW_HINT`
-as ALL UNSET — do NOT substitute defaults for the purpose of the
-current-selection marker in Step 2. The defaults above only apply when
-writing the config in Step 4 if the user picks Other / blank. When the
-config is unset, no option should be marked with ✓.
+**Missing-config case:** if the file does not exist yet, treat both as
+unset (no `✓` markers in Step 2). The defaults above only apply if the
+user picks an out-of-range answer in Step 3.
 
 ## Step 2 — Ask the user (two questions, one at a time)
 
@@ -35,41 +32,41 @@ Question 2. Do NOT batch the two questions into one turn — the user needs
 to see and answer each one independently.
 
 **Current-selection marker:** append ` ✓` to the option whose value
-matches the user's current config — this shows them what they're on. The ✓
+matches the user's current config (so they see what they're on). The ✓
 is independent of `(Recommended)`; both can appear together. When matching
-the user's answer in Step 3, ignore any trailing ` ✓`.
+the answer in Step 3, accept EITHER the number OR the label, and ignore
+any trailing ` ✓`.
 
 **Question 1 — language**
 
-Which language do you want the redpen plugin to coach you on?
+Reply with the number or the name. Which language do you want the redpen
+plugin to coach you on?
 
-Options (only these four; if the user picks something else, fall back to English):
-- `English` — Practise English. Plugin rewrites English prompts.
-- `中文 (Chinese)` — Practise Chinese. Plugin rewrites Chinese prompts.
-- `Español (Spanish)` — Practise Spanish. Plugin rewrites Spanish prompts.
-- `日本語 (Japanese)` — Practise Japanese. Plugin rewrites Japanese prompts.
+1. `English`
+2. `中文 (Chinese)`
+3. `Español (Spanish)`
+4. `日本語 (Japanese)`
 
 **Question 2 — native style line**
 
-Show a second "native style" line with a more idiomatic rephrasing under
-each rewrite?
+Reply with the number or the name. Show a second "native style" line with
+a more idiomatic rephrasing under each rewrite?
 
-Options (ALWAYS append ` (Recommended)` to `On`):
-- `On` — Show the divider + native-style rephrasing line under each rewrite.
-- `Off` — Only show the scored rewrite line. No second line.
+1. `On` (Recommended) — show the divider + native-style rephrasing.
+2. `Off` — only show the scored rewrite line.
 
 ## Step 3 — Map answers to config values
 
-Language:
-- `English` → `english`
-- `中文 (Chinese)` → `chinese`
-- `Español (Spanish)` → `spanish`
-- `日本語 (Japanese)` → `japanese`
+Language (accept number OR name, case-insensitive, ignore trailing ✓):
+- `1` or `English` → `english`
+- `2` or `中文` / `Chinese` / `中文 (Chinese)` → `chinese`
+- `3` or `Español` / `Spanish` / `Español (Spanish)` → `spanish`
+- `4` or `日本語` / `Japanese` / `日本語 (Japanese)` → `japanese`
 - Anything else → `english`
 
-Native hint:
-- `On ...` → `on`
-- `Off ...` → `off`
+Native hint (accept number OR name, case-insensitive):
+- `1` or `On` → `on`
+- `2` or `Off` → `off`
 - Anything else → `on`
 
 ## Step 4 — Write the new config

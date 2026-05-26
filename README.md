@@ -107,9 +107,21 @@ codex plugin marketplace add 12og3r/redpen
 codex plugin add redpen-codex
 ```
 
-Then, in a Codex TUI session, type `$redpen-setup` to configure language /
-model / native-style-hint. The settings live at `~/.codex/redpen.config`
-(independent from the Claude Code plugin's config, so both plugins can be
+**Defaults**: out of the box (no config file), redpen-codex coaches in
+**English** with the **native-style hint on**. Send any prompt and you
+should see a `[NN] <rewrite>  →  <native-style>` line. No setup
+required.
+
+**To change language or turn off the native-style hint**, either:
+
+- Edit `~/.codex/redpen.config` by hand (just 2 lines — see the example
+  in [plugins/redpen-codex/skills/setup/SKILL.md](plugins/redpen-codex/skills/setup/SKILL.md)),
+  OR
+- In a Codex TUI session, type `$redpen-setup` — a conversational
+  wizard that walks two numbered questions and writes the file for you.
+
+Config lives at `~/.codex/redpen.config` (independent from the Claude
+Code plugin's `~/.claude/redpen.config`, so both plugins can be
 installed side-by-side without colliding).
 
 ### Known limitations
@@ -128,9 +140,9 @@ installed side-by-side without colliding).
   edit the `MODEL=` line in
   `plugins/redpen-codex/hooks/grammar_check.sh` directly.
 - **Skills are TUI-only.** The `$redpen-setup` skill only fires inside the
-  interactive Codex TUI. The first-run nudge will still fire in `codex exec`
-  non-interactive mode, but the model can't auto-invoke the skill there —
-  it will ask you to run setup in the TUI.
+  interactive Codex TUI. In `codex exec` non-interactive mode the skill
+  invocation does nothing; users on that path should edit
+  `~/.codex/redpen.config` by hand instead.
 - **No `--no-tools` analog in `codex exec`** — tool definitions still
   inflate the prompt context (~5–7k tokens observed) vs. the Claude Code
   version. Latency and cost are higher per coach turn. Stick with

@@ -79,37 +79,11 @@ case "$PROMPT" in
 esac
 
 # --- Load user config -------------------------------------------------------
-# First-run guard: if the user has never configured the plugin, skip the
-# rewrite AND nudge Codex to run the `redpen-setup` skill via
-# UserPromptSubmit additionalContext. Re-emitting on every prompt until the
-# config exists is self-healing: as soon as setup finishes, the file appears
-# and the nudge stops firing on its own.
+# No first-run nudge: if the config file doesn't exist yet, just use the
+# defaults (English + native-style hint on) and start coaching immediately.
+# Users who want to change defaults run `$redpen-setup` (skill) or edit
+# ~/.codex/redpen.config by hand — both are documented in the README.
 CONFIG_FILE="${HOME}/.codex/redpen.config"
-if [[ ! -f "$CONFIG_FILE" ]]; then
-  log "no config at $CONFIG_FILE — emitting UserPromptSubmit first-run nudge"
-  /usr/bin/python3 -c '
-import json, sys
-sys.stdout.write(json.dumps({
-  "hookSpecificOutput": {
-    "hookEventName": "UserPromptSubmit",
-    "additionalContext": (
-      "<redpen-codex-first-run>\n"
-      "The redpen-codex plugin has not been configured yet "
-      "(no ~/.codex/redpen.config file exists). Before doing "
-      "anything else this turn — including answering the user, "
-      "exploring code, or invoking any other tool — you MUST invoke "
-      "the redpen-setup skill (type $redpen-setup or say \"run the "
-      "redpen-setup skill\") to configure language, model, and "
-      "native-style hint. After setup completes, then proceed with "
-      "whatever the user originally asked.\n"
-      "</redpen-codex-first-run>"
-    )
-  }
-}))
-'
-  exit 0
-fi
-
 LANGUAGE="english"
 SHOW_HINT="on"
 # shellcheck disable=SC1090
