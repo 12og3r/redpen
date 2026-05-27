@@ -264,4 +264,7 @@ if m:
 # overwritten. If it filters them, no visible change.
 single_line_mode = os.environ.get("REDPEN_SINGLE_LINE", "") in ("1", "true", "yes", "on")
 prefix_wipe = "\r\033[2K" if single_line_mode else ""
-print(json.dumps({"systemMessage": prefix_wipe + "\n" + out}, ensure_ascii=False))
+# coco-specific: skip the leading `\n` that the canonical adds for Claude Code
+# spacing. coco's TUI already inserts its own gap above the systemMessage, so
+# prepending another `\n` produces an ugly double-blank gap above the score.
+print(json.dumps({"systemMessage": prefix_wipe + out}, ensure_ascii=False))
