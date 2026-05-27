@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create or update, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  macos-universal:
+    name: Build macOS universal binary
+    runs-on: macos-14
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust targets
+        run: |
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Verify shared plugin files
+        run: make check-shared
+
+      - name: Verify shell scripts
+        run: |
+          bash -n plugins/redpen-codex/shared/coach_codex.sh
+          bash -n plugins/redpen-codex/hooks/grammar_check.sh
+          bash -n plugins/redpen/hooks/grammar_check.sh
+          sh -n scripts/install-codex-app.sh
+
+      - name: Verify renderer JavaScript
+        run: |
+          node -e 'const fs = require("fs"); new Function(fs.readFileSync("assets/codex-app/renderer-inject.js", "utf8"));'
+
+      - name: Run Rust tests
+        run: cargo test --workspace --locked
+
+      - name: Build arm64 binary
+        run: cargo build --release --locked -p redpen-codex-app --target aarch64-apple-darwin
+
+      - name: Build x86_64 binary
+        run: cargo build --release --locked -p redpen-codex-app --target x86_64-apple-darwin
+
+      - name: Package release assets
+        run: |
+          set -eu
+          mkdir -p dist
+          lipo -create \
+            target/aarch64-apple-darwin/release/redpen-codex-app \
+            target/x86_64-apple-darwin/release/redpen-codex-app \
+            -output dist/redpen-codex-app-macos-universal
+          chmod +x dist/redpen-codex-app-macos-universal
+          cp scripts/install-codex-app.sh dist/install-codex-app.sh
+          (
+            cd dist
+            shasum -a 256 redpen-codex-app-macos-universal > redpen-codex-app-macos-universal.sha256
+            shasum -a 256 install-codex-app.sh > install-codex-app.sh.sha256
+          )
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          set -eu
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist/* --clobber
+          else
+            gh release create "$RELEASE_TAG" dist/* \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TAG" \
+              --generate-notes
+          fi
