@@ -1,0 +1,5 @@
+hooks:
+  - type: command
+    command: 'bash "${COCO_PLUGIN_ROOT}/hooks/grammar_check.sh"'
+    matchers:
+      - event: user_prompt_submit
