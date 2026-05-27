@@ -39,6 +39,12 @@ log "prompt[0..80]=$(printf '%s' "$PROMPT" | head -c 80)"
 
 if [[ -z "$PROMPT" ]]; then log "skip: empty prompt"; exit 0; fi
 
+# coco's user_prompt_submit payload includes a leading space for slash-
+# command invocations (e.g. " /redpen-coco:setup"), unlike Claude Code's
+# raw prompt. Trim leading whitespace so the slash/bang patterns below
+# match — otherwise `/foo` gets coached as prose.
+PROMPT="${PROMPT#"${PROMPT%%[![:space:]]*}"}"
+
 # Skip harness-injected envelopes — system reminders, command scaffolding,
 # task-notifications, etc. These are NOT the user typing prose and shouldn't
 # be coached. The hook input has no `source` field to distinguish them, so we
