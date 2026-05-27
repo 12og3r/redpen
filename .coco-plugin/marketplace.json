@@ -1,0 +1,16 @@
+{
+  "name": "redpen",
+  "version": "1.0.0",
+  "description": "Personal language-learning helper for coco/Trae CLI (English / Chinese / Spanish / Japanese).",
+  "owner": {
+    "name": "roger.kwan"
+  },
+  "plugins": [
+    {
+      "name": "redpen-coco",
+      "description": "Score + rewrite each user prompt in your chosen target language via a user_prompt_submit hook. Native `coco --print` pipeline, default model Kimi-K2.5. Output via systemMessage (visible to you only, not added to the model's context).",
+      "source": "./plugins/redpen-coco",
+      "category": "productivity"
+    }
+  ]
+}

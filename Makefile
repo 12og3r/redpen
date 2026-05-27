@@ -13,7 +13,7 @@
 # `make check-shared` verifies the copies are in sync (use in CI).
 
 SHARED_SRC := plugins/shared
-SHARED_TARGETS := plugins/redpen/shared plugins/redpen-codex/shared
+SHARED_TARGETS := plugins/redpen/shared plugins/redpen-codex/shared plugins/redpen-coco/shared
 SHARED_FILES := coach_prompts.sh render_diff.py
 
 .PHONY: sync-shared check-shared
