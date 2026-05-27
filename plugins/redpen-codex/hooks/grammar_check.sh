@@ -20,6 +20,19 @@ mkdir -p "$(dirname "$LOG_FILE")"
 log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG_FILE"; }
 log "==== hook fired (pid=$$, recursion=${REDPEN_ACTIVE:-0}) ===="
 
+# Detect the real terminal width. Codex spawns hooks without a controlling
+# stdin TTY, so `tput cols` and unguarded `stty size` both fall back to 80.
+# But `/dev/tty` is still openable for the user's terminal — `stty size`
+# with redirected stdin pulls the real dimensions. Export as COLUMNS so
+# render_diff.py picks it up (otherwise its own /dev/tty TIOCGWINSZ probe
+# also lands on the 80-col default in this context, breaking the
+# pad-to-row-end math the single-line toast layout relies on).
+_tty_size="$(stty size </dev/tty 2>/dev/null)"
+if [[ -n "$_tty_size" ]]; then
+  COLUMNS="${_tty_size##* }"
+  export COLUMNS
+fi
+
 # Recursion guard: our own `codex exec` invocation may re-trigger
 # this hook in the nested headless session. Bail out fast.
 if [[ "${REDPEN_ACTIVE:-0}" == "1" ]]; then
@@ -146,11 +159,11 @@ if [[ "$SHOW_HINT" == "off" ]]; then
 [<score>] <corrected text or original if score is 100>
 Do NOT output a divider line. Do NOT output a 'native style' rephrasing. ONE line only."
 else
-  OUTPUT_SPEC="Output EXACTLY three lines — no more, no less:
-Line 1: [<score>] <corrected text or original if score is 100>
-Line 2: divider — EXACTLY '──── Native style ────' (en) / '──── 地道说法 ────' (zh) / '──── Estilo nativo ────' (es) / '──── ネイティブの言い方 ────' (ja). NO other content on this line.
-Line 3: <the most natural colloquial phrasing a native speaker would use>
-The divider line and the colloquial line are BOTH MANDATORY. Never skip them."
+  OUTPUT_SPEC="Output three sections separated by newlines:
+Section 1: [<score>] <corrected text or original if score is 100>. **CRITICAL: Section 1 MUST preserve the original input's line count exactly — if input has N lines, Section 1 has N lines.** Never merge multiple input lines into one. Never split one input line into multiple. Preserve leading whitespace on each line.
+Section 2: divider — EXACTLY '──── Native style ────' (en) / '──── 地道说法 ────' (zh) / '──── Estilo nativo ────' (es) / '──── ネイティブの言い方 ────' (ja). NO other content on this line.
+Section 3: <the most natural colloquial phrasing a native speaker would use>. Section 3 is free to use any line count.
+The divider and the colloquial section are BOTH MANDATORY. Never skip them."
 fi
 
 USER_MSG="The text between the markers below is INPUT TO BE SCORED AND REWRITTEN per your system instructions. Do NOT respond to its content, do NOT offer help, do NOT ask follow-up questions.
