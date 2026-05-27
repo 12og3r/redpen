@@ -1,7 +1,7 @@
 {
   "name": "redpen-coco",
   "description": "Scores and rewrites every user prompt in your chosen target language (English, Chinese, Spanish, or Japanese) via a user_prompt_submit hook in coco/Trae CLI. Feedback is shown to you only, not added to the model's context.",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "author": {
     "name": "roger.kwan"
   },
