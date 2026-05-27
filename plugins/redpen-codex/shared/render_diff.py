@@ -27,6 +27,14 @@ def visual_width(s):
     return n
 
 def terminal_width(default=80):
+    # Prefer the caller-provided COLUMNS — the bash hook detects the real
+    # terminal width via `stty size </dev/tty` and exports it, which is the
+    # only source that survives Codex's TTY-less hook spawn context.
+    env_cols = os.environ.get("COLUMNS", "").strip()
+    if env_cols.isdigit():
+        n = int(env_cols)
+        if n > 0:
+            return n
     try:
         import fcntl, termios
         with open("/dev/tty", "rb") as tty:
