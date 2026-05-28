@@ -47,7 +47,7 @@ jobs:
       - name: Build x86_64 binary
         run: cargo build --release --locked -p redpen-codex-app --target x86_64-apple-darwin
 
-      - name: Package release assets
+      - name: Build universal binary
         run: |
           set -eu
           mkdir -p dist
@@ -56,12 +56,6 @@ jobs:
             target/x86_64-apple-darwin/release/redpen-codex-app \
             -output dist/redpen-codex-app-macos-universal
           chmod +x dist/redpen-codex-app-macos-universal
-          cp scripts/install-codex-app.sh dist/install-codex-app.sh
-          (
-            cd dist
-            shasum -a 256 redpen-codex-app-macos-universal > redpen-codex-app-macos-universal.sha256
-            shasum -a 256 install-codex-app.sh > install-codex-app.sh.sha256
-          )
 
       - name: Install dmgbuild
         run: |
@@ -77,11 +71,9 @@ jobs:
           # universal binary built above. dmgbuild styles the image headlessly.
           BIN="$PWD/dist/redpen-codex-app-macos-universal" bash packaging/codex-app/build.sh
           bash packaging/codex-app/make-dmg.sh
-          cp "packaging/codex-app/build/Red Pen.dmg" "dist/Red Pen.dmg"
-          (
-            cd dist
-            shasum -a 256 "Red Pen.dmg" > "Red Pen.dmg.sha256"
-          )
+          # GitHub replaces spaces in release-asset names with periods, so the
+          # distributed file has no space (the mounted volume stays "Red Pen").
+          cp "packaging/codex-app/build/Red Pen.dmg" "dist/RedPen.dmg"
 
       - name: Create or update GitHub release
         env:
@@ -90,9 +82,9 @@ jobs:
         run: |
           set -eu
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" dist/* --clobber
+            gh release upload "$RELEASE_TAG" "dist/RedPen.dmg" --clobber
           else
-            gh release create "$RELEASE_TAG" dist/* \
+            gh release create "$RELEASE_TAG" "dist/RedPen.dmg" \
               --target "$GITHUB_SHA" \
               --title "$RELEASE_TAG" \
               --generate-notes
