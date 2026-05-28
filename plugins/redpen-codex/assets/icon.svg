@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="redpen">
+  <!-- paper background -->
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="#FFFBF2" stroke="#ECE3D2" stroke-width="4"/>
+
+  <!-- single red marker pen, diagonal (nib down-left, cap up-right) -->
+  <g transform="rotate(-40 256 256)">
+    <!-- end cap -->
+    <rect x="214" y="92" width="84" height="30" rx="15" fill="#B11722"/>
+    <!-- barrel -->
+    <rect x="208" y="118" width="96" height="190" rx="26" fill="#E11D2A"/>
+    <!-- highlight on barrel -->
+    <rect x="226" y="132" width="14" height="162" rx="7" fill="#FFFFFF" opacity="0.28"/>
+    <!-- label band -->
+    <rect x="208" y="250" width="96" height="18" fill="#FFFFFF" opacity="0.5"/>
+    <!-- silver collar -->
+    <rect x="214" y="308" width="84" height="22" rx="4" fill="#CDD2D9"/>
+    <!-- conical tip -->
+    <path d="M222 330 L290 330 L256 408 Z" fill="#9A1018"/>
+    <!-- felt nib point -->
+    <path d="M244 384 L268 384 L256 410 Z" fill="#6E0A10"/>
+  </g>
+</svg>

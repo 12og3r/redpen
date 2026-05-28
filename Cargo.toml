@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = ["crates/redpen-codex-app"]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"

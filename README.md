@@ -6,17 +6,21 @@ broken, and showing how a native speaker would say the same thing — all
 in your chosen target language. Designed for developers who want passive
 writing practice while doing their day job at the terminal.
 
-Currently supports two agent CLIs as separate but feature-parallel plugins:
+Currently supports two agent CLIs as separate but feature-parallel plugins,
+plus an experimental launcher for Codex App:
 
 - **Claude Code** — install [`redpen`](#install-claude-code)
 - **OpenAI Codex CLI** — install [`redpen-codex`](#install-codex-cli)
+- **Codex App** — run the lightweight launcher in
+  [Codex App experimental launcher](#codex-app-experimental-launcher)
 
-Both share the same architecture (UserPromptSubmit hook + `systemMessage`
-emit), the same scoring rubric, the same four target languages, and the
-same shared `render_diff.py`. Your original prompt always reaches the
-model unchanged — the feedback is shown to you only, never added to the
-model's context. redpen is a **coach**, not a rewriter: the goal is for
-you to read the correction, notice what was off, and write a little
+The two CLI plugins share the same architecture (UserPromptSubmit hook +
+`systemMessage` emit), scoring rubric, target languages, and shared
+`render_diff.py`. The Codex App launcher reuses the Codex runner but renders
+feedback in the app DOM instead of a CLI hook channel. Your original prompt
+always reaches the model unchanged — the feedback is shown to you only, never
+added to the model's context. redpen is a **coach**, not a rewriter: the goal
+is for you to read the correction, notice what was off, and write a little
 better next time.
 
 Supported languages (both plugins):
@@ -94,6 +98,50 @@ codex plugin add redpen-codex@redpen
 **English** with the **native-style hint on**. Send any prompt and you
 should see a `[NN] <rewrite>  →  <native-style>` line. No setup
 required.
+
+## Codex App experimental launcher
+
+This path does not modify `Codex.app` or unpack `app.asar`. It launches a
+fresh Codex App process with Chrome DevTools remote debugging enabled, injects
+a small renderer script through CDP, and handles redpen checks through a
+`Runtime.addBinding` bridge back to this launcher.
+
+```sh
+# Quit Codex App first, then run:
+cargo run -p redpen-codex-app -- launch
+```
+
+For a released build, install the launcher with:
+
+```sh
+curl -fsSL https://github.com/12og3r/redpen/releases/latest/download/install-codex-app.sh | sh
+```
+
+Or download `redpen-codex-app-macos-universal` from the GitHub release page,
+make it executable, and place it anywhere on your `PATH`.
+
+The launcher reuses the Codex config at `~/.codex/redpen.config` and the same
+`codex exec` runner as `redpen-codex`. Feedback appears asynchronously under
+the just-submitted user message. Your original prompt is not changed, and the
+feedback is not sent back into the conversation context.
+
+Useful flags:
+
+```sh
+cargo run -p redpen-codex-app -- launch \
+  --codex-app /Applications/Codex.app \
+  --debug-port 9229
+```
+
+If Codex App is already running, the launcher exits with an instruction to
+quit it first. This is intentional: an already-running Electron process may
+ignore new remote-debugging arguments.
+
+Release builds are single-file executables. The binary embeds the redpen
+coach scripts and expands them under
+`~/Library/Application Support/redpen-codex-app/runtime/<version>/` on first
+run. Set `REDPEN_COACH_SCRIPT` or pass `--coach-script` only when debugging a
+local script override.
 
 ## Configure (Claude Code)
 
@@ -198,11 +246,14 @@ there.
 
 ## Developing
 
-If you edit any file in `plugins/shared/`, run `make sync-shared` to copy
-the changes into `plugins/redpen/shared/` and `plugins/redpen-codex/shared/`
-(both plugins bundle their own copy of `shared/` so marketplace installs
-are self-contained). `make check-shared` flags drift — wire it into CI if
-you have it.
+Each plugin bundles its own `shared/` directory (`coach_prompts.sh`,
+`render_diff.py`) so marketplace installs are self-contained — the installer
+copies a single plugin directory and a sibling `shared/` would not come
+along. The three plugins (`redpen`, `redpen-codex`, `redpen-coco`) maintain
+their `shared/` copies **independently**: there is no canonical source and no
+sync step, so each plugin can diverge where its host CLI needs it (e.g. coco
+skips the leading newline its TUI already adds). When fixing a bug that
+affects more than one plugin, apply the change to each plugin's copy by hand.
 
 ## Scoring rubric
 
@@ -359,21 +410,22 @@ redpen/
 ├── plugins/redpen/                          ← Claude Code plugin
 │   ├── .claude-plugin/plugin.json
 │   ├── commands/setup.md                    ← /redpen:setup
-│   ├── shared/render_diff.py                ← (synced from plugins/shared/)
+│   ├── shared/                              ← coach_prompts.sh + render_diff.py (self-contained)
 │   └── hooks/
 │       ├── hooks.json                       ← UserPromptSubmit registration
 │       └── grammar_check.sh                 ← the hook itself
 ├── plugins/redpen-codex/                    ← Codex CLI plugin
 │   ├── .codex-plugin/plugin.json
 │   ├── skills/setup/SKILL.md                ← $redpen-setup
-│   ├── shared/render_diff.py                ← (synced from plugins/shared/)
+│   ├── shared/                              ← own copy (also embedded in redpen-codex-app)
 │   └── hooks/
 │       ├── hooks.json
 │       └── grammar_check.sh
-└── plugins/shared/                          ← source of truth for shared files;
-                                               `make sync-shared` copies into both
-                                               plugins above
+└── plugins/redpen-coco/                     ← coco CLI plugin (own shared/ copy)
 ```
+
+Each plugin's `shared/` is maintained independently — there is no canonical
+copy and no sync step (see [Developing](#developing)).
 
 User-level files (created on first run):
 

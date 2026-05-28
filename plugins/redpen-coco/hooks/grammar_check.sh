@@ -122,8 +122,7 @@ if [[ -z "$COCO_BIN" ]]; then log "skip: coco CLI not on PATH"; exit 0; fi
 
 # --- Build the coach system prompt -----------------------------------------
 # coach_prompts.sh lives at plugins/redpen-coco/shared/ (bundled with the
-# plugin). The canonical source is plugins/shared/ at the repo root;
-# `make sync-shared` keeps the bundled copies in sync.
+# plugin). Each plugin maintains its own shared/ copy independently.
 _REDPEN_SHARED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../shared" && pwd)" \
   || { log "fatal: cannot resolve shared/ relative to hook"; exit 0; }
 # shellcheck disable=SC1091
