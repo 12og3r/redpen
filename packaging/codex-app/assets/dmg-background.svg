@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 440" width="660" height="440">
+  <defs>
+    <radialGradient id="paper" cx="38%" cy="32%" r="85%">
+      <stop offset="0%" stop-color="#FCF7EC"/>
+      <stop offset="70%" stop-color="#F8F1E1"/>
+      <stop offset="100%" stop-color="#EFE6D2"/>
+    </radialGradient>
+    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#E0364A"/>
+      <stop offset="100%" stop-color="#B8132A"/>
+    </linearGradient>
+  </defs>
+
+  <!-- paper -->
+  <rect width="660" height="440" fill="url(#paper)"/>
+
+  <!-- faint ruled lines -->
+  <g stroke="#E7DCC4" stroke-width="1" opacity="0.7">
+    <line x1="0" y1="120" x2="660" y2="120"/>
+    <line x1="0" y1="160" x2="660" y2="160"/>
+    <line x1="0" y1="200" x2="660" y2="200"/>
+    <line x1="0" y1="240" x2="660" y2="240"/>
+    <line x1="0" y1="280" x2="660" y2="280"/>
+    <line x1="0" y1="320" x2="660" y2="320"/>
+    <line x1="0" y1="360" x2="660" y2="360"/>
+  </g>
+  <!-- red margin rule -->
+  <line x1="60" y1="0" x2="60" y2="440" stroke="#E0364A" stroke-width="1.5" opacity="0.45"/>
+
+  <!-- title -->
+  <text x="86" y="74" font-family="Baskerville, 'Hoefler Text', Georgia, serif" font-size="44" font-style="italic" fill="#2C2622">Red Pen</text>
+  <!-- hand-inked underline under the title -->
+  <path d="M86 88 C 150 80, 230 96, 300 85" stroke="url(#ink)" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <text x="90" y="108" font-family="Baskerville, 'Hoefler Text', Georgia, serif" font-size="14.5" fill="#8C8275" letter-spacing="0.5">a red pen for your prompts</text>
+
+  <!-- curved pen-stroke arrow from the app icon toward Applications -->
+  <g fill="none" stroke="url(#ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M250 196 C 300 150, 360 150, 408 192"/>
+    <path d="M408 192 L 392 176"/>
+    <path d="M408 192 L 414 170"/>
+  </g>
+
+  <!-- handwritten hint -->
+  <text x="330" y="312" text-anchor="middle" font-family="'Bradley Hand', 'Marker Felt', cursive" font-size="21" fill="#D92D43" transform="rotate(-3 330 312)">drag me into Applications</text>
+</svg>

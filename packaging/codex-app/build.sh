@@ -8,7 +8,7 @@
 # double-click. It starts the launcher detached, then exits; the launcher lives
 # until Codex App quits.
 #
-# Output: packaging/codex-app/build/Redpen.app
+# Output: packaging/codex-app/build/Red Pen(Codex).app
 # Env overrides:
 #   BIN          prebuilt redpen-codex-app binary to embed (CI passes the
 #                universal binary; otherwise the binary is built with cargo)
@@ -17,7 +17,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 OUT="$HERE/build"
-APP="$OUT/Red Pen.app"
+APP="$OUT/Red Pen(Codex).app"
 VERSION="0.3.1"
 BUNDLE_ID="org.redpen.app"
 PB=/usr/libexec/PlistBuddy
@@ -73,8 +73,8 @@ PLIST="$APP/Contents/Info.plist"
 # CFBundleIconFile and would point back at the generic applet icon.
 $PB -c "Delete :CFBundleIconName" "$PLIST" 2>/dev/null || true
 $PB -c "Set :CFBundleIconFile AppIcon" "$PLIST"
-$PB -c "Set :CFBundleName Red Pen" "$PLIST"
-$PB -c "Add :CFBundleDisplayName string Red Pen" "$PLIST" 2>/dev/null || $PB -c "Set :CFBundleDisplayName Red Pen" "$PLIST"
+$PB -c "Set :CFBundleName Red Pen(Codex)" "$PLIST"
+$PB -c "Add :CFBundleDisplayName string Red Pen(Codex)" "$PLIST" 2>/dev/null || $PB -c "Set :CFBundleDisplayName Red Pen(Codex)" "$PLIST"
 $PB -c "Add :CFBundleIdentifier string $BUNDLE_ID" "$PLIST" 2>/dev/null || $PB -c "Set :CFBundleIdentifier $BUNDLE_ID" "$PLIST"
 $PB -c "Add :CFBundleShortVersionString string $VERSION" "$PLIST" 2>/dev/null || $PB -c "Set :CFBundleShortVersionString $VERSION" "$PLIST"
 $PB -c "Add :CFBundleVersion string $VERSION" "$PLIST" 2>/dev/null || $PB -c "Set :CFBundleVersion $VERSION" "$PLIST"

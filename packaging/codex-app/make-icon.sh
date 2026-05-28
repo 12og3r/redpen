@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Regenerate the committed app icon from the redpen-codex plugin icon, so the
-# Red Pen.app icon matches the plugin's icon. CI consumes the committed PNG.
+# Red Pen(Codex).app icon matches the plugin's icon. CI consumes the committed PNG.
 #
 # Output (committed): packaging/codex-app/assets/app-icon-1024.png
 set -euo pipefail
