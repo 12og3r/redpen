@@ -127,6 +127,30 @@ function installStyles() {
 .redpen-feedback-error {
   color: #71717a;
 }
+.redpen-feedback-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.redpen-spinner {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid rgba(24, 24, 27, 0.18);
+  border-top-color: #e11d2a;
+  animation: redpen-spin 0.7s linear infinite;
+}
+@keyframes redpen-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .redpen-spinner {
+    animation-duration: 1.6s;
+  }
+}
 @media (prefers-color-scheme: dark) {
   .redpen-feedback {
     border-color: rgba(244, 244, 245, 0.14);
@@ -165,6 +189,10 @@ function installStyles() {
   .redpen-feedback-loading,
   .redpen-feedback-error {
     color: #a1a1aa;
+  }
+  .redpen-spinner {
+    border-color: rgba(244, 244, 245, 0.2);
+    border-top-color: #fca5a5;
   }
   .redpen-diff-insert {
     color: #86efac;
@@ -430,7 +458,13 @@ function renderLoadingBlock() {
   const block = baseBlock();
   const body = document.createElement("div");
   body.className = "redpen-feedback-loading";
-  body.textContent = "redpen checking...";
+  const spinner = document.createElement("span");
+  spinner.className = "redpen-spinner";
+  spinner.setAttribute("aria-hidden", "true");
+  const label = document.createElement("span");
+  label.textContent = "redpen checking…";
+  body.appendChild(spinner);
+  body.appendChild(label);
   block.appendChild(body);
   return block;
 }
