@@ -63,6 +63,19 @@ jobs:
             shasum -a 256 install-codex-app.sh > install-codex-app.sh.sha256
           )
 
+      - name: Build Redpen.app installer (.dmg)
+        run: |
+          set -eu
+          # Uses the committed app icon (no Codex.app needed) and embeds the
+          # universal binary built above.
+          BIN="$PWD/dist/redpen-codex-app-macos-universal" bash packaging/codex-app/build.sh
+          bash packaging/codex-app/make-dmg.sh
+          cp "packaging/codex-app/build/Red Pen.dmg" "dist/Red Pen.dmg"
+          (
+            cd dist
+            shasum -a 256 "Red Pen.dmg" > "Red Pen.dmg.sha256"
+          )
+
       - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
