@@ -8,7 +8,6 @@ Env:
   REWRITTEN        — raw stdout from the headless LLM call
   ORIGINAL_PROMPT  — the user's original prompt
   LT_LANGUAGE      — one of english | chinese | spanish | japanese
-  REDPEN_OUTPUT    — "structured" to print UI-friendly JSON instead of systemMessage
 """
 import json, os, re, difflib, struct
 
@@ -28,14 +27,6 @@ def visual_width(s):
     return n
 
 def terminal_width(default=80):
-    # Prefer the caller-provided COLUMNS — the bash hook detects the real
-    # terminal width via `stty size </dev/tty` and exports it, which is the
-    # only source that survives Codex's TTY-less hook spawn context.
-    env_cols = os.environ.get("COLUMNS", "").strip()
-    if env_cols.isdigit():
-        n = int(env_cols)
-        if n > 0:
-            return n
     try:
         import fcntl, termios
         with open("/dev/tty", "rb") as tty:
@@ -81,52 +72,6 @@ def tokenize(s, lang):
         return out
     return re.findall(r"\w+|[^\w\s]|\s+", s, flags=re.UNICODE)
 
-def append_segment(segments, kind, text):
-    if not text:
-        return
-    if segments and segments[-1]["kind"] == kind:
-        segments[-1]["text"] += text
-    else:
-        segments.append({"kind": kind, "text": text})
-
-def diff_segments(orig, new, lang):
-    orig_tokens = tokenize(orig, lang)
-    new_tokens = tokenize(new, lang)
-    sm = difflib.SequenceMatcher(a=orig_tokens, b=new_tokens, autojunk=False)
-    segments = []
-    for tag, i1, i2, j1, j2 in sm.get_opcodes():
-        if tag == "equal":
-            append_segment(segments, "equal", "".join(new_tokens[j1:j2]))
-        elif tag == "delete":
-            for tok in orig_tokens[i1:i2]:
-                if tok.strip():
-                    append_segment(segments, "delete", tok)
-        elif tag == "insert":
-            append_segment(segments, "insert", "".join(new_tokens[j1:j2]))
-        elif tag == "replace":
-            for tok in orig_tokens[i1:i2]:
-                if tok.strip():
-                    append_segment(segments, "delete", tok)
-            append_segment(segments, "insert", "".join(new_tokens[j1:j2]))
-    return segments
-
-def structured_diff(prompt, body, score, lang):
-    if not body:
-        return []
-    if score == 0:
-        return [{"kind": "insert", "text": body}]
-    orig_lines = prompt.split("\n")
-    new_lines = body.split("\n")
-    if len(orig_lines) == len(new_lines) and len(orig_lines) > 1:
-        segments = []
-        for idx, (orig, new) in enumerate(zip(orig_lines, new_lines)):
-            if idx:
-                append_segment(segments, "equal", "\n")
-            for segment in diff_segments(orig, new, lang):
-                append_segment(segments, segment["kind"], segment["text"])
-        return segments
-    return diff_segments(prompt, body, lang)
-
 raw = os.environ.get("REWRITTEN", "")
 prompt = os.environ.get("ORIGINAL_PROMPT", "")
 language = os.environ.get("LT_LANGUAGE", "english")
@@ -163,17 +108,6 @@ if m:
             hint_label = m_div2.group(1).strip()
             hint = body[m_div2.end():]
             body = ""
-    if os.environ.get("REDPEN_OUTPUT", "").strip().lower() == "structured":
-        print(json.dumps({
-            "status": "ok",
-            "score": score,
-            "language": language,
-            "rewrite": body.rstrip(),
-            "nativeStyleLabel": hint_label,
-            "nativeStyle": hint.rstrip(),
-            "diff": structured_diff(prompt, body.rstrip(), score, language),
-        }, ensure_ascii=False))
-        raise SystemExit
     # Skip diff when score is 0 — the original was a different language, so
     # every token is "changed" and the highlight is just noise. Color the
     # whole rewrite green (per-token, so terminal wrap does not drop ANSI)
@@ -330,4 +264,7 @@ if m:
 # overwritten. If it filters them, no visible change.
 single_line_mode = os.environ.get("REDPEN_SINGLE_LINE", "") in ("1", "true", "yes", "on")
 prefix_wipe = "\r\033[2K" if single_line_mode else ""
-print(json.dumps({"systemMessage": prefix_wipe + "\n" + out}, ensure_ascii=False))
+# coco-specific: skip the leading `\n` that the canonical adds for Claude Code
+# spacing. coco's TUI already inserts its own gap above the systemMessage, so
+# prepending another `\n` produces an ugly double-blank gap above the score.
+print(json.dumps({"systemMessage": prefix_wipe + out}, ensure_ascii=False))

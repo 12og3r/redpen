@@ -168,9 +168,8 @@ if [[ -z "$CLAUDE_BIN" ]]; then log "skip: claude CLI not on PATH"; exit 0; fi
 
 # --- Build the coach system prompt -----------------------------------------
 # coach_prompts.sh lives at plugins/redpen/shared/ (bundled with the plugin
-# so marketplace installers that copy plugins/redpen/ pick it up too). The
-# canonical source is plugins/shared/ at the repo root; `make sync-shared`
-# (or `make check-shared` in CI) keeps the bundled copies in sync.
+# so marketplace installers that copy plugins/redpen/ pick it up too). Each
+# plugin maintains its own shared/ copy independently.
 _REDPEN_SHARED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../shared" && pwd)" \
   || { log "fatal: cannot resolve shared/ relative to hook"; exit 0; }
 # shellcheck disable=SC1091

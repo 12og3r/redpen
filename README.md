@@ -246,11 +246,14 @@ there.
 
 ## Developing
 
-If you edit any file in `plugins/shared/`, run `make sync-shared` to copy
-the changes into `plugins/redpen/shared/` and `plugins/redpen-codex/shared/`
-(both plugins bundle their own copy of `shared/` so marketplace installs
-are self-contained). `make check-shared` flags drift — wire it into CI if
-you have it.
+Each plugin bundles its own `shared/` directory (`coach_prompts.sh`,
+`render_diff.py`) so marketplace installs are self-contained — the installer
+copies a single plugin directory and a sibling `shared/` would not come
+along. The three plugins (`redpen`, `redpen-codex`, `redpen-coco`) maintain
+their `shared/` copies **independently**: there is no canonical source and no
+sync step, so each plugin can diverge where its host CLI needs it (e.g. coco
+skips the leading newline its TUI already adds). When fixing a bug that
+affects more than one plugin, apply the change to each plugin's copy by hand.
 
 ## Scoring rubric
 
@@ -407,21 +410,22 @@ redpen/
 ├── plugins/redpen/                          ← Claude Code plugin
 │   ├── .claude-plugin/plugin.json
 │   ├── commands/setup.md                    ← /redpen:setup
-│   ├── shared/render_diff.py                ← (synced from plugins/shared/)
+│   ├── shared/                              ← coach_prompts.sh + render_diff.py (self-contained)
 │   └── hooks/
 │       ├── hooks.json                       ← UserPromptSubmit registration
 │       └── grammar_check.sh                 ← the hook itself
 ├── plugins/redpen-codex/                    ← Codex CLI plugin
 │   ├── .codex-plugin/plugin.json
 │   ├── skills/setup/SKILL.md                ← $redpen-setup
-│   ├── shared/render_diff.py                ← (synced from plugins/shared/)
+│   ├── shared/                              ← own copy (also embedded in redpen-codex-app)
 │   └── hooks/
 │       ├── hooks.json
 │       └── grammar_check.sh
-└── plugins/shared/                          ← source of truth for shared files;
-                                               `make sync-shared` copies into both
-                                               plugins above
+└── plugins/redpen-coco/                     ← coco CLI plugin (own shared/ copy)
 ```
+
+Each plugin's `shared/` is maintained independently — there is no canonical
+copy and no sync step (see [Developing](#developing)).
 
 User-level files (created on first run):
 

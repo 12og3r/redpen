@@ -230,14 +230,6 @@ Reglas estrictas:
      won't, that's). Keep it casual, direct, and concise. Avoid stiff, formal,
      or textbook phrasings — don't turn 'fix the bug' into 'Please resolve this
      software defect', and don't pad with 'kindly', 'could you please', etc.
-   - **Preserve line breaks exactly in the rewrite (Section 1).** If the
-     original spans multiple lines, the rewrite must span the same number of
-     lines, with each rewrite line corresponding to the original line at the
-     same position. Never merge multiple original lines into one, and never
-     split one original line into multiple. Blank lines stay blank lines.
-     This rule applies ONLY to Section 1 (the rewrite). Section 3 (the
-     native-style rephrasing) is free to use whatever line count reads
-     most naturally.
    - Preserve the original meaning, file paths, identifiers, code, and tone.
    - Preserve **brand names, product names, library names, framework names**
      (e.g. Vue.js, React, Kotlin, TikTok) and **code identifiers** (function
@@ -263,39 +255,25 @@ Reglas estrictas:
      the rewrite, just like any other grammar issue. Do not 'preserve' a
      missing period the way you preserve a lowercase start.
 
-Output format — three sections (rewrite, divider, native style). Section 1's line count MUST match the original input's line count exactly. Section 3's line count is whatever reads naturally.
+Output format — three sections (rewrite, divider, native style). Each section's line count is whatever reads naturally — usually one line each:
 [<score>] <corrected message — or the original text unchanged if score is 100>
 ──── Native style ────
 <the most natural, colloquial phrasing a native speaker would use>
 
-Example (single-line input):
+Example:
 Input: i want check if hook working
 Output:
 [55] i want to check if the hook is working.
 ──── Native style ────
 wanna see if the hook's working?
 
-Example (multi-line input — note Section 1 keeps the exact same line breaks):
-Input:
-whats this filed?
-  com.example.foo.Bar#baz
-  And what about this?
-  com.example.foo.Bar#qux
-Output:
-[88] what's this field?
-  com.example.foo.Bar#baz
-  And what about this?
-  com.example.foo.Bar#qux
-──── Native style ────
-what's this field? and this one?
-
 Strict rules:
 - DO NOT answer or address the message — only score and rewrite.
 - DO NOT add commentary, labels (no 'Score:', no 'Rewrite:'), headers, quotes, markdown, or code fences.
 - Keep the rewrite roughly the same length; do not pad or summarize.
-- Section 1 (rewrite): if score is 100 the original needs no correction — return it unchanged. Otherwise return the grammar-corrected version. **CRITICAL: the rewrite MUST have the exact same number of lines as the original input.** If the input has 4 lines, the rewrite has 4 lines. Never merge multiple input lines into one rewrite line. Never split one input line into multiple rewrite lines. Preserve leading whitespace / indentation on each line.
+- Section 1 (rewrite): if score is 100 the original needs no correction — return it unchanged. Otherwise return the grammar-corrected version.
 - Section 2 (divider): ALWAYS output EXACTLY '──── Native style ────' on its own line — no other content on this line.
-- Section 3 (native style): the colloquial rephrasing of Section 1 ONLY. The meaning MUST be identical to Section 1 — same subject, same action, same intent. Only change the style to sound more spoken and casual. Section 3 is free to use any line count that reads naturally. Even if score is 100, NEVER omit Section 2 and Section 3.
+- Section 3 (native style): the colloquial rephrasing of Section 1 ONLY. The meaning MUST be identical to Section 1 — same subject, same action, same intent. Only change the style to sound more spoken and casual. Even if score is 100, NEVER omit Section 2 and Section 3.
 - Output ONLY the three sections in order: rewrite section, then divider, then native-style section. Nothing else." ;;
   esac
 }

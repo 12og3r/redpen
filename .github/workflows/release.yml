@@ -27,9 +27,6 @@ jobs:
         run: |
           rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
-      - name: Verify shared plugin files
-        run: make check-shared
-
       - name: Verify shell scripts
         run: |
           bash -n plugins/redpen-codex/shared/coach_codex.sh
