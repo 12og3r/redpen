@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Codex Fast Mode for redpen-codex.** The Codex CLI plugin and Codex App
+  launcher now request Codex's Fast service tier by default for their
+  background `codex exec` checks, with automatic Standard-mode fallback when
+  unsupported. Users can disable it with `FAST_MODE=off` in
+  `~/.codex/redpen.config` or through `$redpen-setup`.
+
 ## [0.3.1] - 2026-05-28
 
 ### Added

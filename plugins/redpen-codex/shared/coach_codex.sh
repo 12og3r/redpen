@@ -72,12 +72,15 @@ esac
 CONFIG_FILE="${HOME}/.codex/redpen.config"
 LANGUAGE="english"
 SHOW_HINT="on"
+FAST_MODE="on"
 # shellcheck disable=SC1090
 [[ -r "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
 MODEL="gpt-5.4-mini"
-SHOW_HINT="$(printf '%s' "$SHOW_HINT" | tr 'A-Z' 'a-z')"
+SHOW_HINT="$(printf '%s' "$SHOW_HINT" | tr '[:upper:]' '[:lower:]')"
 case "$SHOW_HINT" in off|false|0|no) SHOW_HINT="off" ;; *) SHOW_HINT="on" ;; esac
-LANGUAGE="$(printf '%s' "$LANGUAGE" | tr 'A-Z' 'a-z')"
+FAST_MODE="$(printf '%s' "${FAST_MODE:-on}" | tr '[:upper:]' '[:lower:]')"
+case "$FAST_MODE" in off|false|0|no) FAST_MODE="off" ;; *) FAST_MODE="on" ;; esac
+LANGUAGE="$(printf '%s' "$LANGUAGE" | tr '[:upper:]' '[:lower:]')"
 case "$LANGUAGE" in
   english|en) LANGUAGE="english" ;;
   chinese|zh|cn|中文) LANGUAGE="chinese" ;;
@@ -88,7 +91,7 @@ case "$LANGUAGE" in
     LANGUAGE="english"
     ;;
 esac
-log "language=$LANGUAGE model=${MODEL:-<follow codex default>}"
+log "language=$LANGUAGE model=${MODEL:-<follow codex default>} fast_mode=$FAST_MODE"
 
 MAX_PROMPT_CHARS="${MAX_PROMPT_CHARS:-2000}"
 if (( ${#PROMPT} > MAX_PROMPT_CHARS )); then
@@ -142,23 +145,73 @@ for candidate in "${TMPDIR:-}" /tmp "$HOME"; do
 done
 log "clean_cwd=${CLEAN_CWD:-<none, using current>}"
 
-ARGS=(exec)
-[[ -n "${MODEL:-}" ]] && ARGS+=(--model "$MODEL")
-ARGS+=(
-  --ephemeral
-  --ignore-user-config
-  --ignore-rules
-  --skip-git-repo-check
-  --sandbox read-only
-  -c model_reasoning_effort=low
-  "$PROMPT_FOR_CODEX"
-)
+build_codex_args() {
+  local service_tier="${1:-standard}"
 
-REWRITTEN="$(
-  if [[ -n "$CLEAN_CWD" ]]; then cd "$CLEAN_CWD"; fi
-  REDPEN_ACTIVE=1 \
-    "$CODEX_BIN" "${ARGS[@]}" </dev/null 2>/dev/null
-)"
+  ARGS=(exec)
+  [[ -n "${MODEL:-}" ]] && ARGS+=(--model "$MODEL")
+  ARGS+=(
+    --ephemeral
+    --ignore-user-config
+    --ignore-rules
+    --skip-git-repo-check
+    --sandbox read-only
+  )
+  if [[ "$service_tier" == "fast" ]]; then
+    ARGS+=(
+      -c features.fast_mode=true
+      -c 'service_tier="fast"'
+    )
+  fi
+  ARGS+=(
+    -c model_reasoning_effort=low
+    "$PROMPT_FOR_CODEX"
+  )
+}
+
+run_codex_exec() {
+  local stderr_file status
+  stderr_file="$(mktemp "${TMPDIR:-/tmp}/redpen-codex-stderr.XXXXXX")" || {
+    RUN_STDERR="mktemp failed"
+    return 1
+  }
+
+  REWRITTEN="$(
+    if [[ -n "$CLEAN_CWD" ]]; then cd "$CLEAN_CWD" || exit 127; fi
+    REDPEN_ACTIVE=1 \
+      "$CODEX_BIN" "${ARGS[@]}" </dev/null 2>"$stderr_file"
+  )"
+  status=$?
+  RUN_STDERR="$(cat "$stderr_file" 2>/dev/null || true)"
+  rm -f "$stderr_file"
+  return "$status"
+}
+
+if [[ "$FAST_MODE" == "on" ]]; then
+  build_codex_args fast
+else
+  build_codex_args standard
+fi
+
+RUN_STDERR=""
+run_codex_exec
+CODEX_STATUS=$?
+if (( CODEX_STATUS != 0 )); then
+  if [[ "$FAST_MODE" == "on" ]]; then
+    log "fast mode failed status=$CODEX_STATUS stderr[0..200]=$(printf '%s' "$RUN_STDERR" | head -c 200); retrying standard"
+    build_codex_args standard
+    RUN_STDERR=""
+    run_codex_exec
+    CODEX_STATUS=$?
+    if (( CODEX_STATUS != 0 )); then
+      log "codex exec failed status=$CODEX_STATUS stderr[0..200]=$(printf '%s' "$RUN_STDERR" | head -c 200)"
+      exit 0
+    fi
+  else
+    log "codex exec failed status=$CODEX_STATUS stderr[0..200]=$(printf '%s' "$RUN_STDERR" | head -c 200)"
+    exit 0
+  fi
+fi
 
 REWRITTEN="${REWRITTEN#"${REWRITTEN%%[![:space:]]*}"}"
 REWRITTEN="${REWRITTEN%"${REWRITTEN##*[![:space:]]}"}"
