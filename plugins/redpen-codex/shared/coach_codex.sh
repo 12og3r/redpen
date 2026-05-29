@@ -73,9 +73,10 @@ CONFIG_FILE="${HOME}/.codex/redpen.config"
 LANGUAGE="english"
 SHOW_HINT="on"
 FAST_MODE="on"
+MODEL="gpt-5.4-mini"
 # shellcheck disable=SC1090
 [[ -r "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
-MODEL="gpt-5.4-mini"
+MODEL="${MODEL:-gpt-5.4-mini}"
 SHOW_HINT="$(printf '%s' "$SHOW_HINT" | tr '[:upper:]' '[:lower:]')"
 case "$SHOW_HINT" in off|false|0|no) SHOW_HINT="off" ;; *) SHOW_HINT="on" ;; esac
 FAST_MODE="$(printf '%s' "${FAST_MODE:-on}" | tr '[:upper:]' '[:lower:]')"
@@ -169,6 +170,13 @@ build_codex_args() {
   )
 }
 
+codex_fast_mode_supported() {
+  case "${MODEL:-}" in
+    gpt-5.4|gpt-5.5) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 run_codex_exec() {
   local stderr_file status
   stderr_file="$(mktemp "${TMPDIR:-/tmp}/redpen-codex-stderr.XXXXXX")" || {
@@ -187,9 +195,12 @@ run_codex_exec() {
   return "$status"
 }
 
-if [[ "$FAST_MODE" == "on" ]]; then
+if [[ "$FAST_MODE" == "on" ]] && codex_fast_mode_supported; then
   build_codex_args fast
 else
+  if [[ "$FAST_MODE" == "on" ]]; then
+    log "fast mode not requested: model=${MODEL:-<follow codex default>} has no known Fast tier"
+  fi
   build_codex_args standard
 fi
 

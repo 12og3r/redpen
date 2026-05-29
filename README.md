@@ -62,8 +62,8 @@ constraints:
 | | Claude Code (`redpen`) | Codex CLI (`redpen-codex`) |
 |---|---|---|
 | Config | `~/.claude/redpen.config` | `~/.codex/redpen.config` |
-| Default model | `haiku` (alias), user-configurable via `/redpen:setup` | `gpt-5.4-mini`, **locked in v0.3.0** (only model that works on ChatGPT-account Codex auth — edit `plugins/redpen-codex/shared/coach_codex.sh` to override) |
-| Fast Mode | n/a | On by default for `codex exec` checks, with automatic Standard fallback when unsupported |
+| Default model | `haiku` (alias), user-configurable via `/redpen:setup` | `gpt-5.4-mini`, advanced override via `MODEL=` in `~/.codex/redpen.config` |
+| Fast Mode | n/a | On by default for Fast-capable models, with Standard mode for unsupported models |
 | Setup invoke | `/redpen:setup` | `$redpen-setup` (Codex skill — TUI only) |
 | Hook target | `claude -p` | `codex exec` |
 | Output layout | multi-line (score / divider / native style) | single line (`[N] <text> ▍native▍ <native style>`, inverted-bg label as the visual break) — Codex's systemMessage channel is a single-line toast that strips all newlines |
@@ -96,9 +96,11 @@ codex plugin add redpen-codex@redpen
 ```
 
 **Defaults**: out of the box (no config file), redpen-codex coaches in
-**English** with the **native-style hint on** and **Fast Mode requested**
-for its background `codex exec` check. Send any prompt and you should see
-a `[NN] <rewrite>  →  <native-style>` line. No setup required.
+**English** with the **native-style hint on** and **Fast Mode enabled** for
+Fast-capable Codex models. The default `gpt-5.4-mini` model currently does not
+advertise a Fast tier, so it runs in Standard mode unless you override the
+model to a Fast-capable one. Send any prompt and you should see a
+`[NN] <rewrite>  →  <native-style>` line. No setup required.
 
 ## Codex App experimental launcher
 
@@ -197,17 +199,19 @@ The skill walks three numbered questions:
 
 The chosen values are written to `~/.codex/redpen.config`. Fast Mode means
 redpen asks Codex to use `service_tier = "fast"` for its background
-`codex exec` check; if the active Codex model or installed Codex CLI does not
-support that tier, redpen retries the same check in Standard mode. Model is
-locked to `gpt-5.4-mini` in v0.3.0, so the skill doesn't ask about it — see
-[Codex CLI — known limitations](#codex-cli--known-limitations) for how to
-override.
+`codex exec` check when the configured model is known to support that tier
+(currently `gpt-5.4` and `gpt-5.5`). Other models run in Standard mode. If a
+Fast-capable model or installed Codex CLI still rejects the tier, redpen retries
+the same check in Standard mode. Model defaults to `gpt-5.4-mini`; the setup
+skill doesn't ask about it, but advanced users can hand-edit `MODEL=gpt-5.4`
+in `~/.codex/redpen.config` to opt into a Fast-capable model.
 
 You can also edit `~/.codex/redpen.config` by hand:
 
 ```sh
 LANGUAGE=english
 SHOW_HINT=on
+MODEL=gpt-5.4-mini
 FAST_MODE=on
 ```
 
@@ -221,19 +225,19 @@ This is the only route in non-TUI `codex exec` since skills don't fire there.
   The Codex plugin therefore renders the score, divider, and native-style
   hint on one line with a `→` separator. Claude Code keeps its richer
   three-line layout.
-- **Model is locked to `gpt-5.4-mini` in v0.3.0.** Empirically, it's the
-  only model that works on the default ChatGPT-account Codex auth —
-  `gpt-4o-mini` / `gpt-5-mini` / `gpt-5` / `gpt-5-codex` all return
-  `model not supported`. The `redpen-setup` skill therefore doesn't ask
-  about model. To override (e.g. when running with `OPENAI_API_KEY`),
-  edit the `MODEL=` line in
-  `plugins/redpen-codex/shared/coach_codex.sh` directly.
-- **Fast Mode is best-effort.** When `FAST_MODE=on` (the default), redpen
-  passes `-c features.fast_mode=true` and `-c service_tier="fast"` to its
-  background `codex exec` run. Codex only applies Fast Mode when the model
-  catalog advertises a Fast tier for the active model. Unsupported Codex
-  versions or models automatically retry in Standard mode and write the
-  fallback reason to `~/.codex/redpen.log`.
+- **Model defaults to `gpt-5.4-mini`.** The `redpen-setup` skill doesn't ask
+  about model because `gpt-5.4-mini` is the cheapest and fastest verified model
+  for this lightweight coaching task. Advanced users can set `MODEL=<value>` in
+  `~/.codex/redpen.config`; any value accepted by `codex exec --model` can be
+  used.
+- **Fast Mode is model-gated and best-effort.** When `FAST_MODE=on` (the
+  default), redpen passes `-c features.fast_mode=true` and
+  `-c service_tier="fast"` only for models currently known to advertise a Fast
+  tier (`gpt-5.4` and `gpt-5.5`). Other models, including the default
+  `gpt-5.4-mini`, run in Standard mode and write the reason to
+  `~/.codex/redpen.log`. To use Fast Mode today, set `MODEL=gpt-5.4` or
+  `MODEL=gpt-5.5`. If a Fast-capable model or Codex version still rejects the
+  tier, redpen retries once in Standard mode.
 - **Skills are TUI-only.** The `$redpen-setup` skill only fires inside the
   interactive Codex TUI. In `codex exec` non-interactive mode the skill
   invocation does nothing; users on that path should edit
@@ -449,7 +453,7 @@ User-level files (created on first run):
 
 - `~/.claude/redpen.config` — Claude Code plugin: language + model + hint
 - `~/.claude/redpen.log` — Claude Code plugin debug log (rotates manually)
-- `~/.codex/redpen.config` — Codex plugin: language + hint + Fast Mode (model is locked)
+- `~/.codex/redpen.config` — Codex plugin: language + hint + model + Fast Mode
 - `~/.codex/redpen.log` — Codex plugin debug log
 
 ## License

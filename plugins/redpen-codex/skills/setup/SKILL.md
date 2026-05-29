@@ -7,11 +7,11 @@ allowed-tools: Read, Write
 The user invoked the redpen-setup skill. Follow these steps EXACTLY. Do not
 explore the codebase, do not run other commands, do not summarise.
 
-> **Note on model:** v0.3.0 locks the OpenAI model to `gpt-5.4-mini` — the
-> only model verified to work on ChatGPT-account Codex auth (the default
-> `codex auth login` mode). The setup skill therefore does NOT ask about
-> model. To override (e.g. when running with `OPENAI_API_KEY` set), edit
-> the `MODEL=` line directly in `plugins/redpen-codex/shared/coach_codex.sh`.
+> **Note on model:** redpen-codex defaults to `gpt-5.4-mini`, which is the
+> cheapest and fastest verified model for this lightweight coaching task. The
+> setup skill does NOT ask about model. Advanced users can set `MODEL=gpt-5.4`
+> or another `codex exec --model` value in `~/.codex/redpen.config`; setup
+> preserves that existing value.
 
 ## Step 1 — Read current config
 
@@ -19,8 +19,10 @@ Read `~/.codex/redpen.config`. Parse:
 - `LANGUAGE=<...>` (default: `english`)
 - `SHOW_HINT=<on|off>` (default: `on`)
 - `FAST_MODE=<on|off>` (default: `on`)
+- `MODEL=<...>` (default: `gpt-5.4-mini`; preserve current value, do not ask)
 
-Remember as `CURRENT_LANGUAGE`, `CURRENT_SHOW_HINT`, and `CURRENT_FAST_MODE`.
+Remember as `CURRENT_LANGUAGE`, `CURRENT_SHOW_HINT`, `CURRENT_FAST_MODE`, and
+`CURRENT_MODEL`.
 
 **Missing-config case:** if the file does not exist yet, treat all values as
 unset (no `✓` markers in Step 2). The defaults above only apply if the user
@@ -60,7 +62,7 @@ a more idiomatic rephrasing under each rewrite?
 Reply with the number or the name. Use Codex Fast Mode for redpen's
 background `codex exec` checks when the active Codex model supports it?
 
-1. `On` (Recommended) — request Codex's Fast service tier; unsupported runs automatically fall back to Standard.
+1. `On` (Recommended) — request Codex's Fast service tier for Fast-capable models; unsupported models run Standard.
 2. `Off` — always use Standard service tier.
 
 ## Step 3 — Map answers to config values
@@ -99,14 +101,14 @@ LANGUAGE=<new language>
 # with a more idiomatic, colloquial rephrasing. on (default) | off.
 SHOW_HINT=<new show_hint>
 #
-# FAST_MODE: request Codex's Fast service tier for redpen's background
-# `codex exec` checks. on (default) | off. Unsupported models or Codex
-# versions automatically fall back to Standard mode.
-FAST_MODE=<new fast_mode>
+# MODEL: advanced override for redpen's background `codex exec --model` value.
+# The setup skill preserves the current value and does not ask about it.
+MODEL=<current model>
 #
-# NOTE: MODEL is locked to gpt-5.4-mini in v0.3.0 (the only model that
-# works on ChatGPT-account Codex auth). To override, edit the MODEL= line
-# in plugins/redpen-codex/shared/coach_codex.sh directly.
+# FAST_MODE: request Codex's Fast service tier for redpen's background
+# `codex exec` checks when the configured model supports it. on (default) | off.
+# Unsupported models run in Standard mode.
+FAST_MODE=<new fast_mode>
 ```
 
 ## Step 5 — Confirm
