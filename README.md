@@ -46,17 +46,18 @@ redpen: [62] help me fix the bug — the app crashes when I click the button.
 The assistant then proceeds to answer your original prompt normally.
 ```
 
-In Codex CLI the visual layout is identical — same 3 rows, same divider
-label — because the plugin pads each section with spaces to the terminal
-column boundary so natural wrap produces the row breaks (Codex's
-`systemMessage` channel is a single-string toast that strips all
-newlines — see [Platform differences](#platform-differences)):
+In Codex CLI the same 3 rows appear, but the divider and native-style
+line start at the left margin (no indentation), because the plugin pads
+each section with spaces to the terminal column boundary so natural wrap
+produces the row breaks — Codex's `systemMessage` channel is a
+single-string toast that strips all newlines (see
+[Platform differences](#platform-differences)):
 
 ```
 You: help me fix the bug, the app crash when click button
 redpen: [62] help me fix the bug — the app crashes when I click the button.
-        ──── Native style ────
-        any idea why the app crashes whenever I click that button?
+──── Native style ────
+any idea why the app crashes whenever I click that button?
 
 The assistant then proceeds to answer your original prompt normally.
 ```
