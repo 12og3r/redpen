@@ -35,6 +35,8 @@ corrected version with the changes diffed inline (red strikethrough for what
 was removed, green for what was added), and (optionally) a "native style" line
 showing how a native speaker would phrase the same thing:
 
+In Claude Code:
+
 ```
 You: help me fix the bug, the app crash when click button
 redpen: [62] help me fix the bug — the app crashes when I click the button.
@@ -44,10 +46,21 @@ redpen: [62] help me fix the bug — the app crashes when I click the button.
 The assistant then proceeds to answer your original prompt normally.
 ```
 
-In Claude Code that's a three-line `systemMessage` block. In Codex CLI
-the same content is rendered on a single line
-(`[62] <rewrite> ▍native▍ <native style>`) because Codex's hook channel
-is a one-line toast — see [Platform differences](#platform-differences).
+In Codex CLI the same 3 rows appear, but the divider and native-style
+line start at the left margin (no indentation), because the plugin pads
+each section with spaces to the terminal column boundary so natural wrap
+produces the row breaks — Codex's `systemMessage` channel is a
+single-string toast that strips all newlines (see
+[Platform differences](#platform-differences)):
+
+```
+You: help me fix the bug, the app crash when click button
+redpen: [62] help me fix the bug — the app crashes when I click the button.
+──── Native style ────
+any idea why the app crashes whenever I click that button?
+
+The assistant then proceeds to answer your original prompt normally.
+```
 
 The feedback is delivered via the host CLI's `systemMessage` channel
 (supported by both Claude Code and Codex), so it's visible to you but
@@ -65,7 +78,7 @@ constraints:
 | Default model | `haiku` (alias), user-configurable via `/redpen:setup` | `gpt-5.4-mini`, **locked in v0.3.0** (only model that works on ChatGPT-account Codex auth — edit `plugins/redpen-codex/hooks/grammar_check.sh` to override) |
 | Setup invoke | `/redpen:setup` | `$redpen-setup` (Codex skill — TUI only) |
 | Hook target | `claude -p` | `codex exec` |
-| Output layout | multi-line (score / divider / native style) | single line (`[N] <text> ▍native▍ <native style>`, inverted-bg label as the visual break) — Codex's systemMessage channel is a single-line toast that strips all newlines |
+| Output layout | multi-line (score / divider / native style) | visually 3 rows (score / divider / native style), same divider label as Claude Code — Codex's `systemMessage` channel is a single-string toast that strips all newlines, so the plugin pads each section to the terminal column boundary and relies on natural terminal wrap for the row breaks |
 
 The two configs live at independent paths (`~/.claude/redpen.config` vs
 `~/.codex/redpen.config`), so both plugins can be installed side-by-side
@@ -204,12 +217,14 @@ there.
 
 ## Codex CLI — known limitations
 
-- **Single-line output only.** Codex's `systemMessage` hook channel renders
-  as a single-line warning toast that strips newlines (verified empirically
-  — `\n`, `\n\n`, `\r`, `<br>`, U+2028, markdown hard break, all collapse).
-  The Codex plugin therefore renders the score, divider, and native-style
-  hint on one line with a `→` separator. Claude Code keeps its richer
-  three-line layout.
+- **Single-string output channel.** Codex's `systemMessage` hook channel
+  renders as a single-string warning toast that strips all newlines
+  (verified empirically — `\n`, `\n\n`, `\r`, `<br>`, U+2028, markdown
+  hard break, all collapse). The Codex plugin works around this by padding
+  each section (score line / divider / native-style line) with spaces to
+  the terminal column boundary, letting natural terminal wrap create the
+  visual row breaks. The visual result is the same 3-row layout as Claude
+  Code; the divider label (`──── Native style ────` etc.) is identical.
 - **Model is locked to `gpt-5.4-mini` in v0.3.0.** Empirically, it's the
   only model that works on the default ChatGPT-account Codex auth —
   `gpt-4o-mini` / `gpt-5-mini` / `gpt-5` / `gpt-5-codex` all return
