@@ -25,7 +25,7 @@ fi
 
 # --- Parse hook input -------------------------------------------------------
 INPUT="$(cat)"
-PROMPT="$(printf '%s' "$INPUT" | /usr/bin/python3 -c '
+PROMPT="$(printf '%s' "$INPUT" | /usr/bin/env python3 -c '
 import json, sys
 try:
     data = json.load(sys.stdin)
@@ -90,7 +90,7 @@ esac
 CONFIG_FILE="${HOME}/.claude/redpen.config"
 if [[ ! -f "$CONFIG_FILE" ]]; then
   log "no config at $CONFIG_FILE — emitting UserPromptSubmit first-run nudge"
-  /usr/bin/python3 -c '
+  /usr/bin/env python3 -c '
 import json, sys
 sys.stdout.write(json.dumps({
   "hookSpecificOutput": {
@@ -586,7 +586,7 @@ if [[ -z "$REWRITTEN" ]]; then log "skip: empty rewrite"; exit 0; fi
 # *changed* relative to the original — so the user sees what was wrong at a
 # glance. All client-side (difflib), no extra LLM call, no added latency.
 OUTPUT_JSON="$(REWRITTEN="$REWRITTEN" ORIGINAL_PROMPT="$PROMPT" LT_LANGUAGE="$LANGUAGE" \
-    /usr/bin/python3 "${_REDPEN_SHARED_DIR}/render_diff.py")" \
+    /usr/bin/env python3 "${_REDPEN_SHARED_DIR}/render_diff.py")" \
   || { log "fatal: render_diff.py failed"; exit 0; }
 log "emit json[0..200]=$(printf '%s' "$OUTPUT_JSON" | head -c 200)"
 printf '%s\n' "$OUTPUT_JSON"

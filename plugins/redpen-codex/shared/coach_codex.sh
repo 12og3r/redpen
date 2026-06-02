@@ -27,7 +27,7 @@ if [[ "${REDPEN_ACTIVE:-0}" == "1" ]]; then
 fi
 
 INPUT="$(cat)"
-PROMPT="$(printf '%s' "$INPUT" | /usr/bin/python3 -c '
+PROMPT="$(printf '%s' "$INPUT" | /usr/bin/env python3 -c '
 import json, sys
 try:
     data = json.load(sys.stdin)
@@ -170,12 +170,12 @@ if [[ -z "$REWRITTEN" ]]; then log "skip: empty rewrite"; exit 0; fi
 if [[ "${REDPEN_OUTPUT:-}" == "structured" ]]; then
   OUTPUT_JSON="$(REWRITTEN="$REWRITTEN" ORIGINAL_PROMPT="$PROMPT" LT_LANGUAGE="$LANGUAGE" \
       REDPEN_OUTPUT=structured \
-      /usr/bin/python3 "${_REDPEN_SHARED_DIR}/render_diff.py")" \
+      /usr/bin/env python3 "${_REDPEN_SHARED_DIR}/render_diff.py")" \
     || { log "fatal: render_diff.py failed"; exit 0; }
 else
   OUTPUT_JSON="$(REWRITTEN="$REWRITTEN" ORIGINAL_PROMPT="$PROMPT" LT_LANGUAGE="$LANGUAGE" \
       REDPEN_SINGLE_LINE=1 \
-      /usr/bin/python3 "${_REDPEN_SHARED_DIR}/render_diff.py")" \
+      /usr/bin/env python3 "${_REDPEN_SHARED_DIR}/render_diff.py")" \
     || { log "fatal: render_diff.py failed"; exit 0; }
 fi
 

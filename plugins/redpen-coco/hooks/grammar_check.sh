@@ -26,7 +26,7 @@ fi
 
 # --- Parse hook input -------------------------------------------------------
 INPUT="$(cat)"
-PROMPT="$(printf '%s' "$INPUT" | /usr/bin/python3 -c '
+PROMPT="$(printf '%s' "$INPUT" | /usr/bin/env python3 -c '
 import json, sys
 try:
     data = json.load(sys.stdin)
@@ -198,7 +198,7 @@ if [[ -z "$REWRITTEN" ]]; then log "skip: empty rewrite"; exit 0; fi
 # Emit as systemMessage. render_diff.py colors the score by band and adds an
 # inline diff (red strikethrough for deletions, green bold for additions).
 OUTPUT_JSON="$(REWRITTEN="$REWRITTEN" ORIGINAL_PROMPT="$PROMPT" LT_LANGUAGE="$LANGUAGE" \
-    /usr/bin/python3 "${_REDPEN_SHARED_DIR}/render_diff.py")" \
+    /usr/bin/env python3 "${_REDPEN_SHARED_DIR}/render_diff.py")" \
   || { log "fatal: render_diff.py failed"; exit 0; }
 log "emit json[0..200]=$(printf '%s' "$OUTPUT_JSON" | head -c 200)"
 printf '%s\n' "$OUTPUT_JSON"

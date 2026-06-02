@@ -27,7 +27,7 @@ CONFIG_FILE="${HOME}/.claude/redpen.config"
 # add session context that strongly directs the next turn.
 if [[ ! -f "$CONFIG_FILE" ]]; then
   log "first-run: no config at $CONFIG_FILE — instructing Claude to run /redpen:setup"
-  /usr/bin/python3 -c '
+  /usr/bin/env python3 -c '
 import json, sys
 sys.stdout.write(json.dumps({
   "hookSpecificOutput": {
