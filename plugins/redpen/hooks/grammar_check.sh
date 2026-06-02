@@ -496,6 +496,39 @@ $PROMPT
 
 $OUTPUT_SPEC"
 
+# --- Forward the user's model-connection config, minus what would load/fire --
+# `--setting-sources ""` below keeps the coach's startup minimal, but it also
+# drops the user's auth/provider config whenever that lives in settings.json
+# rather than the environment (apiKeyHelper / awsCredentialExport /
+# awsAuthRefresh, a custom ANTHROPIC_BASE_URL, Bedrock/Vertex/Foundry selection
+# + keys in `env`, modelOverrides, ...). Re-supply the user's settings via
+# `--settings`, MINUS only the keys that would re-introduce the startup
+# latency/side-effects `--setting-sources ""` exists to avoid:
+#   hooks          - would fire in the coach session (incl. recursive re-entry)
+#   enabledPlugins - would load plugins and fire their hooks
+#   mcpServers     - would spin up MCP servers (also neutralized by
+#                    --strict-mcp-config below)
+# Everything else is passive config or is overridden by the coach's own flags
+# (--model beats availableModels, --system-prompt beats outputStyle, --tools ""
+# drops tools/permissions — all verified), so forwarding it is free. OAuth/
+# keychain and env-var auth survive `--setting-sources ""` on their own.
+COACH_AUTH=""
+USER_SETTINGS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
+if [[ -r "$USER_SETTINGS" ]]; then
+  COACH_AUTH="$(/usr/bin/env python3 -c '
+import json, sys
+try:
+    s = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(0)
+DROP = {"hooks", "enabledPlugins", "mcpServers"}
+out = {k: v for k, v in s.items() if k not in DROP}
+if out:
+    sys.stdout.write(json.dumps(out))
+' "$USER_SETTINGS")"
+  [[ -n "$COACH_AUTH" ]] && log "coach: forwarding settings.json (minus hooks/plugins/mcp) via --settings"
+fi
+
 # --- Build the claude args --------------------------------------------------
 # Minimal-startup flag stack (OAuth-compatible — none of these require an
 # API key, unlike `--bare`). Each cuts a meaningful chunk of wrapper init:
@@ -523,6 +556,9 @@ ARGS=(
   --tools ""
   --effort low
 )
+# Re-supply settings-based auth (extracted above) without reloading the full
+# user settings — so no skills/plugins enter the coach's context.
+if [[ -n "$COACH_AUTH" ]]; then ARGS+=(--settings "$COACH_AUTH"); fi
 if [[ -n "$MODEL" ]]; then
   ARGS+=(--model "$MODEL")
   # Opus has a real p95 long tail on this task (~7s observed in bench)
