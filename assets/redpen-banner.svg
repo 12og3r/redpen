@@ -8,10 +8,10 @@
     </filter>
     <!-- left-to-right reveal for the handwritten correction -->
     <clipPath id="revealCorr">
-      <rect x="186" y="82" width="0" height="40">
+      <rect x="194" y="82" width="0" height="40">
         <set attributeName="width" to="0" begin="reset.end"/>
-        <animate attributeName="width" from="0" to="540"
-                 begin="strike.end+0.25s" dur="0.95s" fill="freeze"
+        <animate attributeName="width" from="0" to="380"
+                 begin="strike.end+0.25s" dur="0.85s" fill="freeze"
                  calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.2 1"/>
       </rect>
     </clipPath>
@@ -64,8 +64,8 @@
 
     <!-- handwritten correction above the line, revealed as if being written -->
     <g clip-path="url(#revealCorr)">
-      <text x="190" y="112" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
-            font-style="italic" font-size="24" fill="#d8392f">the app crashes when I click the button</text>
+      <text x="198" y="112" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
+            font-style="italic" font-size="24" fill="#d8392f">crashes when I click the button</text>
     </g>
 
     <!-- circled grade in the corner, drawn as a sketchy hand-drawn loop -->
@@ -96,16 +96,16 @@
                         calcMode="spline" keyTimes="0;1" keySplines="0.45 0 0.2 1"/>
       <!-- lift up to the correction -->
       <animateTransform attributeName="transform" type="translate"
-                        from="500,141" to="190,108"
+                        from="500,141" to="198,108"
                         begin="strike.end" dur="0.25s" fill="freeze"/>
       <!-- write the correction -->
       <animateTransform attributeName="transform" type="translate"
-                        from="190,108" to="704,108"
-                        begin="strike.end+0.25s" dur="0.95s" fill="freeze"
+                        from="198,108" to="560,108"
+                        begin="strike.end+0.25s" dur="0.85s" fill="freeze"
                         calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.2 1"/>
       <!-- swing over to circle the grade -->
       <animateTransform attributeName="transform" type="translate"
-                        from="704,108" to="744,48"
+                        from="560,108" to="744,48"
                         begin="strike.end+1.2s" dur="0.3s" fill="freeze"/>
 
       <!-- pen artwork: nib at local (0,0), barrel up-right -->
