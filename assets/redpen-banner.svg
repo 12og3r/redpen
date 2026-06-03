@@ -14,9 +14,9 @@
       </rect>
     </clipPath>
     <clipPath id="crashesClip">
-      <rect x="195" y="90" width="0" height="40">
+      <rect x="187" y="90" width="0" height="40">
         <set attributeName="width" to="0" begin="reset.end"/>
-        <animate attributeName="width" from="0" to="112"
+        <animate attributeName="width" from="0" to="120"
                  begin="strike.end+0.15s" dur="0.5s" fill="freeze"
                  calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.2 1"/>
       </rect>
@@ -48,56 +48,56 @@
             font-size="22" fill="#34312d" letter-spacing="0.5">the app crash when click button</text>
     </g>
     <rect y="130" width="3" height="24" fill="#34312d" opacity="1">
-      <animate attributeName="x" from="96" to="510" begin="type.begin" dur="1.4s" fill="freeze" calcMode="linear"/>
+      <animate attributeName="x" from="96" to="466" begin="type.begin" dur="1.4s" fill="freeze" calcMode="linear"/>
       <animate attributeName="opacity" values="1;0;1" dur="0.5s" repeatCount="3" begin="type.begin"/>
       <set attributeName="opacity" to="0" begin="type.end"/>
     </rect>
 
-    <!-- (1) RED strike-through over the one wrong word "crash" -->
-    <path d="M200,144 C 222,141 244,146 266,142" fill="none" stroke="#d8392f"
+    <!-- (1) RED strike-through over the one wrong word "crash" (x 191->248) -->
+    <path d="M189,144 C 210,141 230,146 250,142" fill="none" stroke="#d8392f"
           stroke-width="3.4" stroke-linecap="round"
-          stroke-dasharray="80" stroke-dashoffset="80">
-      <set attributeName="stroke-dashoffset" to="80" begin="reset.end"/>
-      <animate id="strike" attributeName="stroke-dashoffset" from="80" to="0"
+          stroke-dasharray="72" stroke-dashoffset="72">
+      <set attributeName="stroke-dashoffset" to="72" begin="reset.end"/>
+      <animate id="strike" attributeName="stroke-dashoffset" from="72" to="0"
                begin="type.end+0.3s" dur="0.45s" fill="freeze"
                calcMode="spline" keyTimes="0;1" keySplines="0.45 0 0.2 1"/>
     </path>
     <!-- GREEN replacement "crashes" -->
     <g clip-path="url(#crashesClip)">
-      <text x="199" y="112" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
+      <text x="191" y="112" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
             font-style="italic" font-size="22" fill="#2ea043">crashes</text>
     </g>
 
-    <!-- (2) RED insertion caret between "when" and "click" + GREEN "I" -->
-    <path d="M327,140 L334,127 L341,140" fill="none" stroke="#d8392f" stroke-width="2.6"
+    <!-- (2) RED insertion caret in the "when|click" gap (center 324) + GREEN "I" -->
+    <path d="M317,140 L324,127 L331,140" fill="none" stroke="#d8392f" stroke-width="2.6"
           stroke-linecap="round" stroke-linejoin="round"
           stroke-dasharray="30" stroke-dashoffset="30">
       <set attributeName="stroke-dashoffset" to="30" begin="reset.end"/>
       <animate id="caret1" attributeName="stroke-dashoffset" from="30" to="0"
                begin="strike.end+0.55s" dur="0.25s" fill="freeze"/>
     </path>
-    <text x="330" y="112" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
+    <text x="324" y="112" text-anchor="middle" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
           font-style="italic" font-size="22" fill="#2ea043" opacity="0">I
       <set attributeName="opacity" to="0" begin="reset.end"/>
       <animate attributeName="opacity" from="0" to="1" begin="caret1.end" dur="0.25s" fill="freeze"/>
     </text>
 
-    <!-- (3) RED insertion caret between "click" and "button" + GREEN "the" -->
-    <path d="M411,140 L418,127 L425,140" fill="none" stroke="#d8392f" stroke-width="2.6"
+    <!-- (3) RED insertion caret in the "click|button" gap (center 384) + GREEN "the" -->
+    <path d="M377,140 L384,127 L391,140" fill="none" stroke="#d8392f" stroke-width="2.6"
           stroke-linecap="round" stroke-linejoin="round"
           stroke-dasharray="30" stroke-dashoffset="30">
       <set attributeName="stroke-dashoffset" to="30" begin="reset.end"/>
       <animate id="caret2" attributeName="stroke-dashoffset" from="30" to="0"
                begin="caret1.end+0.45s" dur="0.25s" fill="freeze"/>
     </path>
-    <text x="402" y="112" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
+    <text x="384" y="112" text-anchor="middle" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
           font-style="italic" font-size="22" fill="#2ea043" opacity="0">the
       <set attributeName="opacity" to="0" begin="reset.end"/>
       <animate attributeName="opacity" from="0" to="1" begin="caret2.end" dur="0.3s" fill="freeze"/>
     </text>
 
-    <!-- green tick approving the fix -->
-    <path d="M520,107 l7,9 l15,-22" fill="none" stroke="#2ea043" stroke-width="3"
+    <!-- green tick approving the fix (after "button", ends ~460) -->
+    <path d="M472,107 l7,9 l15,-22" fill="none" stroke="#2ea043" stroke-width="3"
           stroke-linecap="round" stroke-linejoin="round"
           stroke-dasharray="42" stroke-dashoffset="42">
       <set attributeName="stroke-dashoffset" to="42" begin="reset.end"/>
@@ -135,17 +135,17 @@
     <!-- the red pen: glides in, strikes "crash", flicks in the two carets, parks by the grade -->
     <g transform="translate(880,150)">
       <set attributeName="transform" to="translate(880,150)" begin="reset.end"/>
-      <animateTransform attributeName="transform" type="translate" from="880,150" to="200,144"
+      <animateTransform attributeName="transform" type="translate" from="880,150" to="189,144"
                         begin="type.end" dur="0.3s" fill="freeze"
                         calcMode="spline" keyTimes="0;1" keySplines="0.3 0 0.2 1"/>
-      <animateTransform attributeName="transform" type="translate" from="200,144" to="266,142"
+      <animateTransform attributeName="transform" type="translate" from="189,144" to="250,142"
                         begin="strike.begin" dur="0.45s" fill="freeze"
                         calcMode="spline" keyTimes="0;1" keySplines="0.45 0 0.2 1"/>
-      <animateTransform attributeName="transform" type="translate" from="266,142" to="334,140"
+      <animateTransform attributeName="transform" type="translate" from="250,142" to="324,140"
                         begin="strike.end+0.45s" dur="0.3s" fill="freeze"/>
-      <animateTransform attributeName="transform" type="translate" from="334,140" to="418,140"
+      <animateTransform attributeName="transform" type="translate" from="324,140" to="384,140"
                         begin="caret1.end+0.2s" dur="0.3s" fill="freeze"/>
-      <animateTransform attributeName="transform" type="translate" from="418,140" to="772,42"
+      <animateTransform attributeName="transform" type="translate" from="384,140" to="772,42"
                         begin="caret2.end+0.1s" dur="0.5s" fill="freeze"
                         calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.3 1"/>
       <g transform="scale(0.92)">
