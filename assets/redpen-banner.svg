@@ -1,12 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 250" width="820" height="250" role="img" aria-label="redpen — marks up every prompt you type like a teacher with a red pen">
   <title>redpen</title>
-  <desc>A sheet of notebook paper: a sentence is typed out, the wrong words are struck through in red pen, the correction is written above in green, a native-style hint appears, and the grade is circled in red — then it loops.</desc>
+  <desc>A sheet of notebook paper: a sentence is typed out; the wrong word is struck through in red and rewritten in green; two red insertion carets add the missing words in green; a native-style hint appears and the grade is circled — then it loops.</desc>
 
   <defs>
     <filter id="paperShadow" x="-10%" y="-10%" width="120%" height="130%">
       <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000" flood-opacity="0.18"/>
     </filter>
-    <!-- typewriter reveal for the student's sentence -->
     <clipPath id="typeClip">
       <rect x="88" y="128" width="0" height="30">
         <set attributeName="width" to="0" begin="reset.end"/>
@@ -14,12 +13,11 @@
                  begin="0.4s; reset.end" dur="1.4s" fill="freeze" calcMode="linear"/>
       </rect>
     </clipPath>
-    <!-- left-to-right reveal for the handwritten correction -->
-    <clipPath id="revealCorr">
+    <clipPath id="crashesClip">
       <rect x="195" y="90" width="0" height="40">
         <set attributeName="width" to="0" begin="reset.end"/>
-        <animate attributeName="width" from="0" to="384"
-                 begin="strike.end+0.25s" dur="0.85s" fill="freeze"
+        <animate attributeName="width" from="0" to="112"
+                 begin="strike.end+0.15s" dur="0.5s" fill="freeze"
                  calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.2 1"/>
       </rect>
     </clipPath>
@@ -49,42 +47,69 @@
       <text x="94" y="150" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
             font-size="22" fill="#34312d" letter-spacing="0.5">the app crash when click button</text>
     </g>
-    <!-- blinking caret that rides the typed text, then disappears -->
     <rect y="130" width="3" height="24" fill="#34312d" opacity="1">
       <animate attributeName="x" from="96" to="510" begin="type.begin" dur="1.4s" fill="freeze" calcMode="linear"/>
       <animate attributeName="opacity" values="1;0;1" dur="0.5s" repeatCount="3" begin="type.begin"/>
       <set attributeName="opacity" to="0" begin="type.end"/>
     </rect>
 
-    <!-- RED strike-through over the wrong words -->
-    <path d="M199,144 C 286,140 392,147 500,141" fill="none" stroke="#d8392f"
+    <!-- (1) RED strike-through over the one wrong word "crash" -->
+    <path d="M200,144 C 222,141 244,146 266,142" fill="none" stroke="#d8392f"
           stroke-width="3.4" stroke-linecap="round"
-          stroke-dasharray="330" stroke-dashoffset="330">
-      <set attributeName="stroke-dashoffset" to="330" begin="reset.end"/>
-      <animate id="strike" attributeName="stroke-dashoffset" from="330" to="0"
-               begin="type.end+0.3s" dur="0.8s" fill="freeze"
+          stroke-dasharray="80" stroke-dashoffset="80">
+      <set attributeName="stroke-dashoffset" to="80" begin="reset.end"/>
+      <animate id="strike" attributeName="stroke-dashoffset" from="80" to="0"
+               begin="type.end+0.3s" dur="0.45s" fill="freeze"
                calcMode="spline" keyTimes="0;1" keySplines="0.45 0 0.2 1"/>
     </path>
-
-    <!-- GREEN correction, written above the struck words -->
-    <g clip-path="url(#revealCorr)">
+    <!-- GREEN replacement "crashes" -->
+    <g clip-path="url(#crashesClip)">
       <text x="199" y="112" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
-            font-style="italic" font-size="24" fill="#2ea043">crashes when I click the button</text>
+            font-style="italic" font-size="22" fill="#2ea043">crashes</text>
     </g>
+
+    <!-- (2) RED insertion caret between "when" and "click" + GREEN "I" -->
+    <path d="M327,140 L334,127 L341,140" fill="none" stroke="#d8392f" stroke-width="2.6"
+          stroke-linecap="round" stroke-linejoin="round"
+          stroke-dasharray="30" stroke-dashoffset="30">
+      <set attributeName="stroke-dashoffset" to="30" begin="reset.end"/>
+      <animate id="caret1" attributeName="stroke-dashoffset" from="30" to="0"
+               begin="strike.end+0.55s" dur="0.25s" fill="freeze"/>
+    </path>
+    <text x="330" y="112" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
+          font-style="italic" font-size="22" fill="#2ea043" opacity="0">I
+      <set attributeName="opacity" to="0" begin="reset.end"/>
+      <animate attributeName="opacity" from="0" to="1" begin="caret1.end" dur="0.25s" fill="freeze"/>
+    </text>
+
+    <!-- (3) RED insertion caret between "click" and "button" + GREEN "the" -->
+    <path d="M411,140 L418,127 L425,140" fill="none" stroke="#d8392f" stroke-width="2.6"
+          stroke-linecap="round" stroke-linejoin="round"
+          stroke-dasharray="30" stroke-dashoffset="30">
+      <set attributeName="stroke-dashoffset" to="30" begin="reset.end"/>
+      <animate id="caret2" attributeName="stroke-dashoffset" from="30" to="0"
+               begin="caret1.end+0.45s" dur="0.25s" fill="freeze"/>
+    </path>
+    <text x="402" y="112" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
+          font-style="italic" font-size="22" fill="#2ea043" opacity="0">the
+      <set attributeName="opacity" to="0" begin="reset.end"/>
+      <animate attributeName="opacity" from="0" to="1" begin="caret2.end" dur="0.3s" fill="freeze"/>
+    </text>
+
     <!-- green tick approving the fix -->
-    <path d="M586,107 l7,9 l15,-22" fill="none" stroke="#2ea043" stroke-width="3"
+    <path d="M520,107 l7,9 l15,-22" fill="none" stroke="#2ea043" stroke-width="3"
           stroke-linecap="round" stroke-linejoin="round"
           stroke-dasharray="42" stroke-dashoffset="42">
       <set attributeName="stroke-dashoffset" to="42" begin="reset.end"/>
       <animate attributeName="stroke-dashoffset" from="42" to="0"
-               begin="strike.end+1.15s" dur="0.3s" fill="freeze"/>
+               begin="caret2.end+0.35s" dur="0.3s" fill="freeze"/>
     </path>
 
     <!-- native-style hint -->
     <text x="94" y="190" font-family="'Helvetica Neue',Arial,sans-serif"
           font-style="italic" font-size="14" fill="#8a8a8a" opacity="0">≈ any idea why the app crashes whenever I click that button?
       <set attributeName="opacity" to="0" begin="reset.end"/>
-      <animate attributeName="opacity" from="0" to="1" begin="strike.end+1.2s" dur="0.6s" fill="freeze"/>
+      <animate attributeName="opacity" from="0" to="1" begin="caret2.end+0.45s" dur="0.6s" fill="freeze"/>
     </text>
 
     <!-- RED circled grade -->
@@ -93,7 +118,7 @@
           stroke-dasharray="285" stroke-dashoffset="285">
       <set attributeName="stroke-dashoffset" to="285" begin="reset.end"/>
       <animate id="circleB" attributeName="stroke-dashoffset" from="285" to="0"
-               begin="strike.end+1.4s" dur="0.7s" fill="freeze"
+               begin="caret2.end+0.75s" dur="0.7s" fill="freeze"
                calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.2 1"/>
     </path>
     <g transform="translate(742,74)">
@@ -107,17 +132,21 @@
       </text>
     </g>
 
-    <!-- the red pen: glides in, strikes, then parks up by the grade -->
+    <!-- the red pen: glides in, strikes "crash", flicks in the two carets, parks by the grade -->
     <g transform="translate(880,150)">
       <set attributeName="transform" to="translate(880,150)" begin="reset.end"/>
-      <animateTransform attributeName="transform" type="translate" from="880,150" to="199,144"
+      <animateTransform attributeName="transform" type="translate" from="880,150" to="200,144"
                         begin="type.end" dur="0.3s" fill="freeze"
                         calcMode="spline" keyTimes="0;1" keySplines="0.3 0 0.2 1"/>
-      <animateTransform attributeName="transform" type="translate" from="199,144" to="500,141"
-                        begin="strike.end-0.8s" dur="0.8s" fill="freeze"
+      <animateTransform attributeName="transform" type="translate" from="200,144" to="266,142"
+                        begin="strike.begin" dur="0.45s" fill="freeze"
                         calcMode="spline" keyTimes="0;1" keySplines="0.45 0 0.2 1"/>
-      <animateTransform attributeName="transform" type="translate" from="500,141" to="772,42"
-                        begin="strike.end" dur="0.45s" fill="freeze"
+      <animateTransform attributeName="transform" type="translate" from="266,142" to="334,140"
+                        begin="strike.end+0.45s" dur="0.3s" fill="freeze"/>
+      <animateTransform attributeName="transform" type="translate" from="334,140" to="418,140"
+                        begin="caret1.end+0.2s" dur="0.3s" fill="freeze"/>
+      <animateTransform attributeName="transform" type="translate" from="418,140" to="772,42"
+                        begin="caret2.end+0.1s" dur="0.5s" fill="freeze"
                         calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.3 1"/>
       <g transform="scale(0.92)">
         <line x1="11" y1="-12" x2="52" y2="-60" stroke="#d8392f" stroke-width="10" stroke-linecap="round"/>
