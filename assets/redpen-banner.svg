@@ -1,114 +1,124 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 240" width="820" height="240" role="img" aria-label="redpen — marks up every prompt you type like a teacher with a red pen">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 250" width="820" height="250" role="img" aria-label="redpen — marks up every prompt you type like a teacher with a red pen">
   <title>redpen</title>
-  <desc>A sheet of notebook paper: a typed sentence is struck through in red pen, the correction is written by hand above the line, and a grade is circled in the corner — then it loops.</desc>
+  <desc>A sheet of notebook paper: a sentence is typed out, the wrong words are struck through in red pen, the correction is written above in green, a native-style hint appears, and the grade is circled in red — then it loops.</desc>
 
   <defs>
     <filter id="paperShadow" x="-10%" y="-10%" width="120%" height="130%">
       <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000" flood-opacity="0.18"/>
     </filter>
+    <!-- typewriter reveal for the student's sentence -->
+    <clipPath id="typeClip">
+      <rect x="88" y="128" width="0" height="30">
+        <set attributeName="width" to="0" begin="reset.end"/>
+        <animate id="type" attributeName="width" from="0" to="420"
+                 begin="0.4s; reset.end" dur="1.4s" fill="freeze" calcMode="linear"/>
+      </rect>
+    </clipPath>
     <!-- left-to-right reveal for the handwritten correction -->
     <clipPath id="revealCorr">
-      <rect x="194" y="82" width="0" height="40">
+      <rect x="195" y="90" width="0" height="40">
         <set attributeName="width" to="0" begin="reset.end"/>
-        <animate attributeName="width" from="0" to="380"
+        <animate attributeName="width" from="0" to="384"
                  begin="strike.end+0.25s" dur="0.85s" fill="freeze"
                  calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.2 1"/>
       </rect>
     </clipPath>
   </defs>
 
-  <!-- sheet of paper -->
-  <rect x="14" y="14" width="792" height="212" rx="8" fill="#fbf7ee" stroke="#e7dcc4" stroke-width="1.5" filter="url(#paperShadow)"/>
-
-  <!-- ruled lines -->
+  <!-- ===== static sheet ===== -->
+  <rect x="14" y="14" width="792" height="222" rx="8" fill="#fbf7ee" stroke="#e7dcc4" stroke-width="1.5" filter="url(#paperShadow)"/>
   <g stroke="#d7e3f0" stroke-width="1.2">
     <line x1="22" y1="110" x2="798" y2="110"/>
     <line x1="22" y1="150" x2="798" y2="150"/>
-    <line x1="22" y1="186" x2="798" y2="186"/>
+    <line x1="22" y1="196" x2="798" y2="196"/>
   </g>
-  <!-- red margin line -->
-  <line x1="72" y1="22" x2="72" y2="218" stroke="#eeb4b0" stroke-width="1.5"/>
-
-  <!-- brand -->
+  <line x1="72" y1="22" x2="72" y2="228" stroke="#eeb4b0" stroke-width="1.5"/>
   <text x="94" y="52" font-family="'Helvetica Neue',Arial,sans-serif" font-size="21" font-weight="700">
     <tspan fill="#d8392f">red</tspan><tspan fill="#34312d">pen</tspan>
   </text>
 
-  <!-- the student's typed sentence (always visible) -->
-  <text x="94" y="150" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
-        font-size="22" fill="#34312d" letter-spacing="0.5">the app crash when click button</text>
-
-  <!-- ============ red-pen ink (fades out, then redraws each loop) ============ -->
-  <g id="ink" opacity="1">
+  <!-- ===== animated stage (fades out, replays each loop) ===== -->
+  <g id="stage" opacity="1">
     <animate id="inkout" attributeName="opacity" from="1" to="0"
-             begin="circleB.end+1.9s" dur="0.6s" fill="freeze"/>
+             begin="circleB.end+1.8s" dur="0.7s" fill="freeze"/>
     <animate attributeName="opacity" from="0" to="1"
              begin="reset.end" dur="0.35s" fill="freeze"/>
 
-    <!-- strike-through, drawn left-to-right with a slight hand wobble -->
-    <path d="M198,144 C 286,140 392,147 500,141" fill="none" stroke="#d8392f"
+    <!-- student's typed sentence (typewriter) -->
+    <g clip-path="url(#typeClip)">
+      <text x="94" y="150" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
+            font-size="22" fill="#34312d" letter-spacing="0.5">the app crash when click button</text>
+    </g>
+    <!-- blinking caret that rides the typed text, then disappears -->
+    <rect y="130" width="3" height="24" fill="#34312d" opacity="1">
+      <animate attributeName="x" from="96" to="510" begin="type.begin" dur="1.4s" fill="freeze" calcMode="linear"/>
+      <animate attributeName="opacity" values="1;0;1" dur="0.5s" repeatCount="3" begin="type.begin"/>
+      <set attributeName="opacity" to="0" begin="type.end"/>
+    </rect>
+
+    <!-- RED strike-through over the wrong words -->
+    <path d="M199,144 C 286,140 392,147 500,141" fill="none" stroke="#d8392f"
           stroke-width="3.4" stroke-linecap="round"
-          stroke-dasharray="340" stroke-dashoffset="340">
-      <set attributeName="stroke-dashoffset" to="340" begin="reset.end"/>
-      <animate id="strike" attributeName="stroke-dashoffset" from="340" to="0"
-               begin="0.7s; reset.end" dur="0.8s" fill="freeze"
+          stroke-dasharray="330" stroke-dashoffset="330">
+      <set attributeName="stroke-dashoffset" to="330" begin="reset.end"/>
+      <animate id="strike" attributeName="stroke-dashoffset" from="330" to="0"
+               begin="type.end+0.3s" dur="0.8s" fill="freeze"
                calcMode="spline" keyTimes="0;1" keySplines="0.45 0 0.2 1"/>
     </path>
 
-    <!-- caret marking where the correction goes -->
-    <path d="M196,138 l8,-12 l8,12" fill="none" stroke="#d8392f" stroke-width="2.4"
-          stroke-linecap="round" stroke-linejoin="round" opacity="0">
-      <set attributeName="opacity" to="0" begin="reset.end"/>
-      <animate attributeName="opacity" from="0" to="1" begin="strike.end" dur="0.2s" fill="freeze"/>
+    <!-- GREEN correction, written above the struck words -->
+    <g clip-path="url(#revealCorr)">
+      <text x="199" y="112" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
+            font-style="italic" font-size="24" fill="#2ea043">crashes when I click the button</text>
+    </g>
+    <!-- green tick approving the fix -->
+    <path d="M586,107 l7,9 l15,-22" fill="none" stroke="#2ea043" stroke-width="3"
+          stroke-linecap="round" stroke-linejoin="round"
+          stroke-dasharray="42" stroke-dashoffset="42">
+      <set attributeName="stroke-dashoffset" to="42" begin="reset.end"/>
+      <animate attributeName="stroke-dashoffset" from="42" to="0"
+               begin="strike.end+1.15s" dur="0.3s" fill="freeze"/>
     </path>
 
-    <!-- handwritten correction above the line, revealed as if being written -->
-    <g clip-path="url(#revealCorr)">
-      <text x="198" y="112" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
-            font-style="italic" font-size="24" fill="#d8392f">crashes when I click the button</text>
-    </g>
+    <!-- native-style hint -->
+    <text x="94" y="190" font-family="'Helvetica Neue',Arial,sans-serif"
+          font-style="italic" font-size="14" fill="#8a8a8a" opacity="0">≈ any idea why the app crashes whenever I click that button?
+      <set attributeName="opacity" to="0" begin="reset.end"/>
+      <animate attributeName="opacity" from="0" to="1" begin="strike.end+1.2s" dur="0.6s" fill="freeze"/>
+    </text>
 
-    <!-- circled grade in the corner, drawn as a sketchy hand-drawn loop -->
-    <g>
-      <path d="M744,33 C 791,32 793,93 743,94 C 696,95 693,36 746,34 C 766,33 778,40 781,52"
-            fill="none" stroke="#d8392f" stroke-width="3" stroke-linecap="round"
-            stroke-dasharray="285" stroke-dashoffset="285">
-        <set attributeName="stroke-dashoffset" to="285" begin="reset.end"/>
-        <animate id="circleB" attributeName="stroke-dashoffset" from="285" to="0"
-                 begin="strike.end+1.3s" dur="0.7s" fill="freeze"
-                 calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.2 1"/>
-      </path>
-      <text x="742" y="74" text-anchor="middle"
-            font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
+    <!-- RED circled grade -->
+    <path d="M744,33 C 791,32 793,93 743,94 C 696,95 693,36 746,34 C 766,33 778,40 781,52"
+          fill="none" stroke="#d8392f" stroke-width="3" stroke-linecap="round"
+          stroke-dasharray="285" stroke-dashoffset="285">
+      <set attributeName="stroke-dashoffset" to="285" begin="reset.end"/>
+      <animate id="circleB" attributeName="stroke-dashoffset" from="285" to="0"
+               begin="strike.end+1.4s" dur="0.7s" fill="freeze"
+               calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.2 1"/>
+    </path>
+    <g transform="translate(742,74)">
+      <animateTransform attributeName="transform" type="scale" additive="sum"
+                        values="0.4;1.12;1" begin="circleB.begin+0.15s" dur="0.45s" fill="freeze"
+                        calcMode="spline" keyTimes="0;0.6;1" keySplines="0.34 1.56 0.64 1;0.34 1.56 0.64 1"/>
+      <text text-anchor="middle" font-family="'Bradley Hand','Segoe Script','Comic Sans MS',cursive"
             font-style="italic" font-size="32" font-weight="700" fill="#d8392f" opacity="0">62
         <set attributeName="opacity" to="0" begin="reset.end"/>
-        <animate attributeName="opacity" from="0" to="1" begin="circleB.begin+0.15s" dur="0.4s" fill="freeze"/>
+        <animate attributeName="opacity" from="0" to="1" begin="circleB.begin+0.15s" dur="0.35s" fill="freeze"/>
       </text>
     </g>
 
-    <!-- the red pen, gliding from mark to mark -->
-    <g transform="translate(198,144)">
-      <set attributeName="transform" to="translate(198,144)" begin="reset.end"/>
-      <!-- glide across the strike -->
-      <animateTransform id="penStrike" attributeName="transform" type="translate"
-                        from="198,144" to="500,141"
-                        begin="0.7s; reset.end" dur="0.8s" fill="freeze"
+    <!-- the red pen: glides in, strikes, then parks up by the grade -->
+    <g transform="translate(880,150)">
+      <set attributeName="transform" to="translate(880,150)" begin="reset.end"/>
+      <animateTransform attributeName="transform" type="translate" from="880,150" to="199,144"
+                        begin="type.end" dur="0.3s" fill="freeze"
+                        calcMode="spline" keyTimes="0;1" keySplines="0.3 0 0.2 1"/>
+      <animateTransform attributeName="transform" type="translate" from="199,144" to="500,141"
+                        begin="strike.end-0.8s" dur="0.8s" fill="freeze"
                         calcMode="spline" keyTimes="0;1" keySplines="0.45 0 0.2 1"/>
-      <!-- lift up to the correction -->
-      <animateTransform attributeName="transform" type="translate"
-                        from="500,141" to="198,108"
-                        begin="strike.end" dur="0.25s" fill="freeze"/>
-      <!-- write the correction -->
-      <animateTransform attributeName="transform" type="translate"
-                        from="198,108" to="560,108"
-                        begin="strike.end+0.25s" dur="0.85s" fill="freeze"
-                        calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.2 1"/>
-      <!-- swing over to circle the grade -->
-      <animateTransform attributeName="transform" type="translate"
-                        from="560,108" to="744,48"
-                        begin="strike.end+1.2s" dur="0.3s" fill="freeze"/>
-
-      <!-- pen artwork: nib at local (0,0), barrel up-right -->
+      <animateTransform attributeName="transform" type="translate" from="500,141" to="772,42"
+                        begin="strike.end" dur="0.45s" fill="freeze"
+                        calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.3 1"/>
       <g transform="scale(0.92)">
         <line x1="11" y1="-12" x2="52" y2="-60" stroke="#d8392f" stroke-width="10" stroke-linecap="round"/>
         <line x1="5" y1="-5" x2="13" y2="-16" stroke="#b62e25" stroke-width="11" stroke-linecap="round"/>
@@ -119,9 +129,8 @@
     </g>
   </g>
 
-  <!-- loop clock: holds the graded sheet, then ends → triggers "reset" → redraw -->
+  <!-- loop clock -->
   <rect width="0" height="0" fill="none">
-    <animate id="reset" attributeName="width" from="0" to="0"
-             begin="inkout.end" dur="0.45s"/>
+    <animate id="reset" attributeName="width" from="0" to="0" begin="inkout.end" dur="0.45s"/>
   </rect>
 </svg>
