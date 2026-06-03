@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/redpen-banner.svg" alt="redpen — marks up every prompt you type like a teacher with a red pen" width="760">
+</p>
+
 # redpen
 
 A personal agent CLI plugin that **marks up every prompt you type** like

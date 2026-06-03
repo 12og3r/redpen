@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 220" width="760" height="220" role="img" aria-label="redpen — marks up every prompt you type like a teacher with a red pen">
+  <title>redpen</title>
+  <desc>An animated demo: a typed prompt is marked up with a red strikethrough, a corrected green version appears, a native-style hint shows, and a score badge is stamped on — then the sequence loops.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b1f27"/>
+      <stop offset="1" stop-color="#11141a"/>
+    </linearGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.4" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- terminal card -->
+  <rect x="1" y="1" width="758" height="218" rx="14" fill="url(#bg)" stroke="#2a2f3a" stroke-width="2"/>
+
+  <!-- window dots -->
+  <circle cx="28" cy="28" r="6" fill="#ff5f57"/>
+  <circle cx="48" cy="28" r="6" fill="#febc2e"/>
+  <circle cx="68" cy="28" r="6" fill="#28c840"/>
+
+  <!-- brand -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700">
+    <text x="704" y="33" text-anchor="end" fill="#e6e6e6">red</text>
+    <text x="731" y="33" text-anchor="end" fill="#ff5f57">pen</text>
+  </g>
+
+  <!-- prompt line -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18">
+    <text x="32" y="92" fill="#7aa2f7">You:</text>
+    <text x="78" y="92" fill="#c8ccd4">the app crash when click button</text>
+
+    <!-- red strike-through, drawn left-to-right; restarts each loop -->
+    <line x1="78" y1="87" x2="78" y2="87" stroke="#ff5f57" stroke-width="3" stroke-linecap="round">
+      <animate id="strike" attributeName="x2" from="78" to="350"
+               begin="1s; reset.end" dur="0.7s" fill="freeze"
+               calcMode="spline" keyTimes="0;1" keySplines="0.22 1 0.36 1"/>
+    </line>
+  </g>
+
+  <!-- corrected line (fades in) -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" opacity="0">
+    <animate id="corrected" attributeName="opacity" from="0" to="1" begin="strike.end+0.2s" dur="0.5s" fill="freeze"/>
+    <text x="32" y="128" fill="#ff5f57" font-weight="700">redpen:</text>
+    <text x="110" y="128" fill="#9ece6a">the app crashes when I click the button.</text>
+  </g>
+
+  <!-- score badge, stamped on with a little overshoot -->
+  <g filter="url(#soft)" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" begin="corrected.begin+0.2s" dur="0.3s" fill="freeze"/>
+    <g transform="translate(648 122)">
+      <animateTransform attributeName="transform" type="scale" additive="sum"
+                        begin="corrected.begin+0.2s" dur="0.45s" fill="freeze"
+                        calcMode="spline" keyTimes="0;0.6;1"
+                        keySplines="0.34 1.56 0.64 1;0.34 1.56 0.64 1"
+                        values="0.2;1.12;1"/>
+      <circle r="34" fill="#1b1f27" stroke="#9ece6a" stroke-width="3"/>
+      <text text-anchor="middle" y="-2" font-size="22" font-weight="700" fill="#9ece6a" font-family="ui-monospace, monospace">62</text>
+      <text text-anchor="middle" y="16" font-size="9" fill="#565f89" font-family="ui-monospace, monospace">SCORE</text>
+    </g>
+  </g>
+
+  <!-- native style hint (fades in last) -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" opacity="0">
+    <animate id="native" attributeName="opacity" from="0" to="1" begin="corrected.end+0.2s" dur="0.5s" fill="freeze"/>
+    <text x="110" y="152" font-size="13" fill="#565f89">──── Native style ────</text>
+    <text x="110" y="172" font-size="13" fill="#7d8499">any idea why the app crashes whenever I click that button?</text>
+  </g>
+
+  <!-- loop controller: holds the finished frame for ~2s, then fades everything
+       back out and triggers "reset", which restarts the chain from "strike" -->
+  <rect id="curtain" x="1" y="1" width="758" height="218" rx="14" fill="url(#bg)" opacity="0">
+    <animate attributeName="opacity" from="0" to="1"
+             begin="native.end+2s" dur="0.4s" fill="freeze"/>
+    <animate id="reset" attributeName="opacity" from="1" to="0"
+             begin="native.end+2.4s" dur="0.4s" fill="freeze"/>
+  </rect>
+</svg>
