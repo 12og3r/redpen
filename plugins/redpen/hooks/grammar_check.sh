@@ -496,37 +496,57 @@ $PROMPT
 
 $OUTPUT_SPEC"
 
-# --- Forward the user's model-connection config, minus what would load/fire --
-# `--setting-sources ""` below keeps the coach's startup minimal, but it also
-# drops the user's auth/provider config whenever that lives in settings.json
-# rather than the environment (apiKeyHelper / awsCredentialExport /
-# awsAuthRefresh, a custom ANTHROPIC_BASE_URL, Bedrock/Vertex/Foundry selection
-# + keys in `env`, modelOverrides, ...). Re-supply the user's settings via
-# `--settings`, MINUS only the keys that would re-introduce the startup
-# latency/side-effects `--setting-sources ""` exists to avoid:
-#   hooks          - would fire in the coach session (incl. recursive re-entry)
-#   enabledPlugins - would load plugins and fire their hooks
-#   mcpServers     - would spin up MCP servers (also neutralized by
-#                    --strict-mcp-config below)
-# Everything else is passive config or is overridden by the coach's own flags
-# (--model beats availableModels, --system-prompt beats outputStyle, --tools ""
-# drops tools/permissions — all verified), so forwarding it is free. OAuth/
-# keychain and env-var auth survive `--setting-sources ""` on their own.
+# --- Forward only the settings-resident auth keys the coach can't see on its own
+# `--setting-sources ""` below keeps the coach's startup minimal by skipping the
+# user/project/local settings.json *files*. Two classes of config survive that
+# on their own, so they must NOT be re-forwarded:
+#   - the settings `env` block (a custom ANTHROPIC_BASE_URL, an env-block
+#     ANTHROPIC_API_KEY, Bedrock/Vertex selection like CLAUDE_CODE_USE_* / AWS_*,
+#     ...): the main session exports it into its process environment, so this
+#     hook — and the coach it spawns — already *inherit* it regardless of
+#     --setting-sources. Re-forwarding it is redundant, and would also drag a
+#     main-session-only proxy/key into the coach (env bleed / billing surprise).
+#   - OAuth / keychain credentials: read via a separate path, not a setting source.
+# The ONLY model-connection config `--setting-sources ""` actually strips, and
+# that env inheritance can't recover, is a small set of *top-level* settings
+# keys. Forward just those, and only when present — so OAuth- and env-var-auth
+# users (none of these keys set) fall straight through to the minimal path with
+# zero added surface. The coach passes its own --model, which beats any forwarded
+# modelOverrides alias. (Verified: with only apiKeyHelper forwarded and the env
+# block left to inheritance, the coach authenticates against a custom gateway.)
 COACH_AUTH=""
 USER_SETTINGS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
-if [[ -r "$USER_SETTINGS" ]]; then
+# Cheap bash pre-gate so the OAuth/keychain/env-var majority never spawns python:
+#   1. If the env already carries an Anthropic key/token, the coach inherits it
+#      and authenticates on its own — skip entirely. (Without this, a settings
+#      apiKeyHelper would be forwarded and *override* that env credential:
+#      measured precedence is apiKeyHelper-via---settings > env ANTHROPIC_API_KEY.)
+#   2. Otherwise run the python extractor ONLY when settings.json actually names
+#      one of the forwarded keys; everyone else short-circuits on a single grep
+#      and stays on the pure minimal path. (A stray match in a value/comment only
+#      costs a wasted spawn — the extractor still emits the correct subset.)
+if [[ -z "${ANTHROPIC_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" && -r "$USER_SETTINGS" ]] \
+   && grep -qE '"(apiKeyHelper|awsCredentialExport|awsAuthRefresh|modelOverrides|forceLoginMethod|forceLoginOrgUUID)"' "$USER_SETTINGS"; then
   COACH_AUTH="$(/usr/bin/env python3 -c '
 import json, sys
 try:
     s = json.load(open(sys.argv[1]))
 except Exception:
     sys.exit(0)
-DROP = {"hooks", "enabledPlugins", "mcpServers"}
-out = {k: v for k, v in s.items() if k not in DROP}
+# Settings-resident, non-env keys that drive credential/login resolution, which
+# --setting-sources "" drops and process-env inheritance cannot recover. Derived
+# from the settings schema auth/provider + force-login surface; everything else
+# (the env block, OAuth/keychain, passive UI config) the coach already reaches on
+# its own or does not need, so it is deliberately omitted. forceLoginMethod /
+# forceLoginOrgUUID keep the coach on the user’s chosen login method+org (e.g.
+# claudeai/subscription) instead of silently falling to a forwarded apiKeyHelper.
+KEEP = ("apiKeyHelper", "awsCredentialExport", "awsAuthRefresh",
+        "modelOverrides", "forceLoginMethod", "forceLoginOrgUUID")
+out = {k: s[k] for k in KEEP if k in s}
 if out:
     sys.stdout.write(json.dumps(out))
 ' "$USER_SETTINGS")"
-  [[ -n "$COACH_AUTH" ]] && log "coach: forwarding settings.json (minus hooks/plugins/mcp) via --settings"
+  [[ -n "$COACH_AUTH" ]] && log "coach: forwarding settings auth/login keys via --settings"
 fi
 
 # --- Build the claude args --------------------------------------------------
@@ -556,8 +576,9 @@ ARGS=(
   --tools ""
   --effort low
 )
-# Re-supply settings-based auth (extracted above) without reloading the full
-# user settings — so no skills/plugins enter the coach's context.
+# Re-supply the settings-resident auth keys extracted above without reloading the
+# full user settings — so no skills, plugins, env block, or passive config enters
+# the coach's context.
 if [[ -n "$COACH_AUTH" ]]; then ARGS+=(--settings "$COACH_AUTH"); fi
 if [[ -n "$MODEL" ]]; then
   ARGS+=(--model "$MODEL")

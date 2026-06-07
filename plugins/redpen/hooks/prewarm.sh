@@ -93,20 +93,29 @@ MODEL="sonnet"
 
 log "spawning background warmup (model=${MODEL:-<follow /model>}, cache=$CACHE_DIR)"
 
-# Same forward-minus-loadables as grammar_check.sh: keep the warmup's
-# --setting-sources "" minimal startup, but forward the user's settings via
-# --settings minus hooks/enabledPlugins/mcpServers (which would fire/load).
+# Same forward-only-auth-keys as grammar_check.sh: the warmup's
+# --setting-sources "" skips the settings *files*, but the `env` block (inherited
+# via the process environment) and OAuth/keychain survive on their own. Forward
+# only the top-level auth/model keys that --setting-sources "" strips and that
+# inheritance can't recover, and only when present — so OAuth/env-var users fall
+# through to the minimal path. See grammar_check.sh for the full rationale.
 COACH_AUTH=""
 USER_SETTINGS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
-if [[ -r "$USER_SETTINGS" ]]; then
+# Cheap bash pre-gate (see grammar_check.sh): skip when the env already carries an
+# Anthropic key/token, else spawn python only when settings.json names one of the
+# forwarded keys — so the OAuth/keychain/env-var majority keeps a python-free hot
+# path here.
+if [[ -z "${ANTHROPIC_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" && -r "$USER_SETTINGS" ]] \
+   && grep -qE '"(apiKeyHelper|awsCredentialExport|awsAuthRefresh|modelOverrides|forceLoginMethod|forceLoginOrgUUID)"' "$USER_SETTINGS"; then
   COACH_AUTH="$(/usr/bin/env python3 -c '
 import json, sys
 try:
     s = json.load(open(sys.argv[1]))
 except Exception:
     sys.exit(0)
-DROP = {"hooks", "enabledPlugins", "mcpServers"}
-out = {k: v for k, v in s.items() if k not in DROP}
+KEEP = ("apiKeyHelper", "awsCredentialExport", "awsAuthRefresh",
+        "modelOverrides", "forceLoginMethod", "forceLoginOrgUUID")
+out = {k: s[k] for k in KEEP if k in s}
 if out:
     sys.stdout.write(json.dumps(out))
 ' "$USER_SETTINGS")"
