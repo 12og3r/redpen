@@ -64,7 +64,7 @@ PROBE
 
 # Use python for JSON encoding — preserves the raw ESC bytes and embedded
 # quotes correctly. ensure_ascii=False so the emoji rows survive.
-OUTPUT_JSON="$(PROBE_BODY="$probes" /usr/bin/python3 -c '
+OUTPUT_JSON="$(PROBE_BODY="$probes" /usr/bin/env python3 -c '
 import json, os
 print(json.dumps({"systemMessage": os.environ["PROBE_BODY"]}, ensure_ascii=False))
 ')"
