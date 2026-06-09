@@ -80,13 +80,11 @@ esac
 
 # --- Load user config -------------------------------------------------------
 # First-run guard: if the user has never run /redpen:setup, skip rewriting
-# AND nudge Claude to run setup via UserPromptSubmit additionalContext. We
-# do the nudge here (not just in the SessionStart prewarm hook) because
-# SessionStart fires inconsistently — it may not re-fire on /clear/resume in
-# every Claude Code version, leaving sessions where the SessionStart nudge
-# never lands. Re-emitting on every prompt until the config exists is
-# self-healing: as soon as /redpen:setup finishes, the file appears and the
-# nudge stops firing on its own.
+# AND nudge Claude to run setup via UserPromptSubmit additionalContext.
+# Re-emitting on every prompt until the config exists is self-healing: as
+# soon as /redpen:setup finishes, the file appears and the nudge stops
+# firing on its own. This is the only setup nudge — there is no SessionStart
+# hook (UserPromptSubmit fires reliably; SessionStart did not).
 CONFIG_FILE="${HOME}/.claude/redpen.config"
 if [[ ! -f "$CONFIG_FILE" ]]; then
   log "no config at $CONFIG_FILE — emitting UserPromptSubmit first-run nudge"
@@ -563,7 +561,6 @@ REWRITTEN="$(
   # the IS_HAIKU comment near the top for the bench numbers driving this.
   if (( IS_HAIKU )); then export CLAUDE_CODE_DISABLE_THINKING=1; fi
   REDPEN_ACTIVE=1 \
-  NODE_COMPILE_CACHE="${HOME}/.cache/redpen/v8" \
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
   CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 \
   CLAUDE_CODE_DISABLE_CLAUDE_MDS=1 \
