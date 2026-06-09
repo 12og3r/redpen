@@ -80,13 +80,11 @@ esac
 
 # --- Load user config -------------------------------------------------------
 # First-run guard: if the user has never run /redpen:setup, skip rewriting
-# AND nudge Claude to run setup via UserPromptSubmit additionalContext. We
-# do the nudge here (not just in the SessionStart prewarm hook) because
-# SessionStart fires inconsistently — it may not re-fire on /clear/resume in
-# every Claude Code version, leaving sessions where the SessionStart nudge
-# never lands. Re-emitting on every prompt until the config exists is
-# self-healing: as soon as /redpen:setup finishes, the file appears and the
-# nudge stops firing on its own.
+# AND nudge Claude to run setup via UserPromptSubmit additionalContext.
+# Re-emitting on every prompt until the config exists is self-healing: as
+# soon as /redpen:setup finishes, the file appears and the nudge stops
+# firing on its own. This is the only setup nudge — there is no SessionStart
+# hook (UserPromptSubmit fires reliably; SessionStart did not).
 CONFIG_FILE="${HOME}/.claude/redpen.config"
 if [[ ! -f "$CONFIG_FILE" ]]; then
   log "no config at $CONFIG_FILE — emitting UserPromptSubmit first-run nudge"
@@ -473,19 +471,73 @@ ANALYSIS: non-Latin: no; typos: none; grammar: minor (React capitalization, miss
 can you explain how React virtual DOM works?"
 fi
 
+# Per-language native-style divider + human-readable language name. Used in
+# both the output spec and the output-language lock below. We name ONLY the
+# target divider (not all four) — listing every language's divider invites
+# the model to pick the wrong one when the INPUT primes it (Chinese input
+# under an English target was emitting '──── 地道说法 ────').
+case "$LANGUAGE" in
+  chinese)  NATIVE_DIVIDER='──── 地道说法 ────';          LANG_NAME='Chinese' ;;
+  spanish)  NATIVE_DIVIDER='──── Estilo nativo ────';    LANG_NAME='Spanish' ;;
+  japanese) NATIVE_DIVIDER='──── ネイティブの言い方 ────'; LANG_NAME='Japanese' ;;
+  *)        NATIVE_DIVIDER='──── Native style ────';     LANG_NAME='English' ;;
+esac
+# A divider from a DIFFERENT language, used only as the concrete "WRONG"
+# example in the lock below. Chinese is the foil unless the target IS Chinese.
+if [[ "$LANGUAGE" == "chinese" ]]; then
+  WRONG_DIVIDER='──── Native style ────'; WRONG_LANG='English'
+else
+  WRONG_DIVIDER='──── 地道说法 ────';       WRONG_LANG='Chinese'
+fi
+
 # Wrap the user message in unambiguous "this is text to rewrite, not a
 # question to answer" framing — belt-and-suspenders alongside --system-prompt
 # so the model's helpful-assistant tendencies can't hijack the call.
 if [[ "$SHOW_HINT" == "off" ]]; then
   OUTPUT_SPEC="Output EXACTLY ONE line — no more, no less:
 [<score>] <corrected text or original if score is 100>
+The corrected text MUST be in $LANG_NAME, even when the input is in another language.
 Do NOT output a divider line. Do NOT output a 'native style' rephrasing. ONE line only."
 else
   OUTPUT_SPEC="Output three sections separated by newlines:
 Section 1: [<score>] <corrected text or original if score is 100>. **CRITICAL: Section 1 MUST preserve the original input's line count exactly — if input has N lines, Section 1 has N lines.** Never merge multiple input lines into one. Never split one input line into multiple. Preserve leading whitespace on each line.
-Section 2: divider — EXACTLY '──── Native style ────' (en) / '──── 地道说法 ────' (zh) / '──── Estilo nativo ────' (es) / '──── ネイティブの言い方 ────' (ja). NO other content on this line.
-Section 3: <the most natural colloquial phrasing a native speaker would use>. Section 3 is free to use any line count.
+Section 2: divider — output EXACTLY this literal line, copied character-for-character: $NATIVE_DIVIDER — NO other content on this line, and NEVER translate or localize it to another language.
+Section 3: <the most natural colloquial phrasing a native speaker would use, in $LANG_NAME>. Section 3 is free to use any line count.
 The divider and the colloquial section are BOTH MANDATORY. Never skip them."
+
+  # --- Output-language lock (fixes input-language bleed) --------------------
+  # When the INPUT is in another language (e.g. Chinese), the model — Haiku
+  # especially — tends to localize the divider and native-style line to the
+  # INPUT language instead of the target. Reproduced 9/20 on Chinese input
+  # under an English target (divider came out '──── 地道说法 ────', and the
+  # native line was sometimes fully Chinese). This block hard-pins every
+  # output line to the target language with a concrete wrong/right contrast.
+  # Appended for all models — cheap insurance, and it reads as a no-op when
+  # the input already matches the target.
+  SYSTEM_INSTR="$SYSTEM_INSTR
+
+════════════════════════════════════════════════════════════════════
+OUTPUT-LANGUAGE LOCK — this overrides everything above. Read it last.
+The input may be written in $WRONG_LANG or any other language. That NEVER
+changes your output language. EVERY line you output — the [score] rewrite,
+the divider, and the native-style line — is ALWAYS in $LANG_NAME.
+
+1. The divider is a FIXED LITERAL. Output it byte-for-byte:
+     $NATIVE_DIVIDER
+   NEVER translate or localize it. Do NOT emit a $WRONG_LANG divider such as
+   '$WRONG_DIVIDER'.
+2. The native-style line is ALWAYS in $LANG_NAME — the $LANG_NAME colloquial
+   version of the rewrite. Even when the input is $WRONG_LANG and the score
+   is 0, you do NOT echo the input language here.
+
+WRONG (input was $WRONG_LANG, target is $LANG_NAME):
+$WRONG_DIVIDER
+<a line written in $WRONG_LANG>
+
+RIGHT:
+$NATIVE_DIVIDER
+<a line written in $LANG_NAME>
+════════════════════════════════════════════════════════════════════"
 fi
 
 USER_MSG="The text between the markers below is INPUT TO BE SCORED AND REWRITTEN per your system instructions. Do NOT respond to its content, do NOT offer help, do NOT ask follow-up questions.
@@ -563,7 +615,6 @@ REWRITTEN="$(
   # the IS_HAIKU comment near the top for the bench numbers driving this.
   if (( IS_HAIKU )); then export CLAUDE_CODE_DISABLE_THINKING=1; fi
   REDPEN_ACTIVE=1 \
-  NODE_COMPILE_CACHE="${HOME}/.cache/redpen/v8" \
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
   CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 \
   CLAUDE_CODE_DISABLE_CLAUDE_MDS=1 \
