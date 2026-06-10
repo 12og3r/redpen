@@ -26,6 +26,42 @@ if [[ "${REDPEN_ACTIVE:-0}" == "1" ]]; then
   exit 0
 fi
 
+# --- Anonymous install ping (once per version, never blocks) -----------------
+# This same coach runs in two hosts, so it counts first-use per version for
+# both — each on its own channel + marker so they never collide:
+#   - codex-cli : the Codex plugin hook (REDPEN_HOST unset -> default)
+#   - codex-app : the experimental launcher binary (sets REDPEN_HOST=codex-app)
+# Counting at runtime (not install time) means every install method is captured
+# — DMG, curl, plugin marketplace, etc. Sends ONLY a channel label + version:
+# no prompt text, no IP (the Worker never reads it), no user data. Opt out with
+# REDPEN_NO_TELEMETRY=1. See telemetry/README.md.
+case "${REDPEN_HOST:-codex-cli}" in
+  codex-cli) _rp_channel="codex-cli"; _rp_marker="${HOME}/.codex/.redpen_counted" ;;
+  codex-app) _rp_channel="codex-app"; _rp_marker="${HOME}/.codex/.redpen_counted_app" ;;
+  *)         _rp_channel="" ;;
+esac
+if [[ -n "$_rp_channel" ]]; then
+  redpen_ping() {
+    local base="${REDPEN_TELEMETRY_URL:-https://redpen-telemetry.redpen.workers.dev}"
+    case "$base" in REPLACE_WITH_*) return 0 ;; esac
+    [[ "${REDPEN_NO_TELEMETRY:-0}" == "1" ]] && return 0
+    # Version: prefer an explicit env (the launcher sets REDPEN_PLUGIN_VERSION,
+    # since it runs this script from a runtime dir without the plugin tree),
+    # else read the plugin manifest, else "unknown". The marker stores the
+    # version so each new version re-counts once (captures updates too).
+    local ver="${REDPEN_PLUGIN_VERSION:-}"
+    if [[ -z "$ver" ]]; then
+      local plugin_json="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.codex-plugin/plugin.json"
+      ver="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$plugin_json" 2>/dev/null | head -1)"
+    fi
+    [[ -z "$ver" ]] && ver="unknown"
+    [[ "$(cat "$_rp_marker" 2>/dev/null)" == "$ver" ]] && return 0
+    printf '%s' "$ver" > "$_rp_marker" 2>/dev/null || return 0
+    ( curl -sf -m 3 "${base%/}/hit?c=${_rp_channel}&v=${ver}" >/dev/null 2>&1 & ) 2>/dev/null
+  }
+  redpen_ping
+fi
+
 INPUT="$(cat)"
 PROMPT="$(printf '%s' "$INPUT" | /usr/bin/env python3 -c '
 import json, sys

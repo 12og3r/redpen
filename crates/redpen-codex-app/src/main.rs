@@ -193,6 +193,10 @@ async fn run_coach(coach_script: &Path, payload: CoachRequest) -> Result<Value> 
         .arg(coach_script)
         .env("REDPEN_OUTPUT", "structured")
         .env("REDPEN_HOST", "codex-app")
+        // The coach runs from a runtime dir without the plugin tree, so it
+        // can't read the manifest version; hand it our own version for the
+        // anonymous per-version install ping (see coach_codex.sh).
+        .env("REDPEN_PLUGIN_VERSION", env!("CARGO_PKG_VERSION"))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

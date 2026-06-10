@@ -41,3 +41,8 @@ mv "$binary_path" "$install_dir/redpen-codex-app"
 
 echo "Installed redpen-codex-app to $install_dir/redpen-codex-app"
 echo "Run: redpen-codex-app launch"
+
+# Note: the codex-app channel is counted at runtime (first launch per version)
+# by the embedded coach, not here — that way every install method is captured
+# (DMG, curl, manual). See plugins/redpen-codex/shared/coach_codex.sh.
+# GitHub's Release asset download_count also counts curl/manual downloads.
