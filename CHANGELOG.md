@@ -10,9 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Anonymous install telemetry.** redpen now counts installs/updates across
-  all three channels (Claude Code plugin, Codex CLI plugin, Codex App launcher)
-  via a tiny Cloudflare Worker that stores only an integer per channel — no
-  prompt text, no IP, no user data. Fires once per machine per version; opt out
+  all four channels (Claude Code plugin, Codex CLI plugin, Codex App launcher,
+  coco/Trae CLI plugin) via a tiny Cloudflare Worker that stores only an
+  integer per channel — no prompt text, no IP, no user data. Fires once per
+  machine per version; opt out
   with `REDPEN_NO_TELEMETRY=1`. A live install-count badge is shown in the
   README. See `telemetry/`.
 

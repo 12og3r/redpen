@@ -13,7 +13,7 @@
 //
 // KV binding (see wrangler.toml): COUNTS
 
-const CHANNELS = ["claude", "codex-cli", "codex-app"];
+const CHANNELS = ["claude", "codex-cli", "codex-app", "coco"];
 
 export default {
   async fetch(request, env) {

@@ -4,6 +4,7 @@
 [![Claude Code](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24.claude&label=Claude%20Code&color=blue)](#telemetry--privacy)
 [![Codex CLI](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24%5B%27codex-cli%27%5D&label=Codex%20CLI&color=blue)](#telemetry--privacy)
 [![Codex App](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24%5B%27codex-app%27%5D&label=Codex%20App&color=blue)](#telemetry--privacy)
+[![coco](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24.coco&label=coco&color=blue)](#telemetry--privacy)
 
 A personal agent CLI plugin that **marks up every prompt you type** like
 a teacher with a red pen — scoring your phrasing, highlighting what's
@@ -421,10 +422,11 @@ Key design choices:
 
 ## Telemetry & privacy
 
-redpen counts **anonymous installs across all three channels** (Claude Code
-plugin, Codex CLI plugin, Codex App) so we have a rough sense of usage. The
-only thing ever sent is a fixed channel label (`claude` / `codex-cli` /
-`codex-app`) — **no prompt text, no IP** (the counting Worker never reads it),
+redpen counts **anonymous installs across all four channels** (Claude Code
+plugin, Codex CLI plugin, Codex App, coco/Trae CLI plugin) so we have a rough
+sense of usage. The only thing ever sent is a fixed channel label (`claude` /
+`codex-cli` / `codex-app` / `coco`) — **no prompt text, no IP** (the counting
+Worker never reads it),
 **no machine id, no user data of any kind.** Each client fires the ping **once
 per installed version** (a local marker file stores the version), so the
 totals grow with every install *and* every update, while an idle user on one
