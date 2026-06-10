@@ -1,0 +1,9 @@
+name = "redpen-telemetry"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Create the KV namespace once, then paste its id below:
+#   npx wrangler kv namespace create COUNTS
+[[kv_namespaces]]
+binding = "COUNTS"
+id = "7d3101662373425cbdfe246f32267b62"

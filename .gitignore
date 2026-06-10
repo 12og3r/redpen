@@ -5,3 +5,5 @@
 .vscode/
 target/
 packaging/codex-app/build/
+# Cloudflare wrangler local state/cache (contains account info)
+.wrangler/

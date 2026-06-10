@@ -24,6 +24,30 @@ if [[ "${REDPEN_ACTIVE:-0}" == "1" ]]; then
   exit 0
 fi
 
+# --- Anonymous install ping (once per version, never blocks) -----------------
+# Sends ONLY a fixed channel label to the telemetry Worker so we can count
+# installs across channels. No prompt text, no IP (the Worker never reads it),
+# no machine id, no user data. Opt out with REDPEN_NO_TELEMETRY=1. See
+# telemetry/README.md.
+redpen_ping() {
+  local base="${REDPEN_TELEMETRY_URL:-https://redpen-telemetry.redpen.workers.dev}"
+  case "$base" in REPLACE_WITH_*) return 0 ;; esac
+  [[ "${REDPEN_NO_TELEMETRY:-0}" == "1" ]] && return 0
+  # Version-aware marker: the marker stores the plugin version, so each new
+  # version re-counts once. That captures updates (and back-fills existing
+  # installs on their first run after this ships), not just the first install.
+  local plugin_json
+  plugin_json="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.claude-plugin/plugin.json"
+  local ver
+  ver="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$plugin_json" 2>/dev/null | head -1)"
+  [[ -z "$ver" ]] && ver="unknown"
+  local marker="${HOME}/.coco/.redpen_counted"
+  [[ "$(cat "$marker" 2>/dev/null)" == "$ver" ]] && return 0
+  printf '%s' "$ver" > "$marker" 2>/dev/null || return 0
+  ( curl -sf -m 3 "${base%/}/hit?c=coco" >/dev/null 2>&1 & ) 2>/dev/null
+}
+redpen_ping
+
 # --- Parse hook input -------------------------------------------------------
 INPUT="$(cat)"
 PROMPT="$(printf '%s' "$INPUT" | /usr/bin/env python3 -c '
