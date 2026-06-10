@@ -70,7 +70,7 @@ Use the **base** URL (no trailing `/hit`); the clients append `/hit?c=<channel>`
 ```sh
 curl https://redpen-telemetry.<your-subdomain>.workers.dev/stats
 # {"claude":12,"codex-cli":4,"codex-app":31,"total":47,
-#  "byVersion":{"claude:0.3.1":12,"codex-cli:0.3.1":4,"codex-app:0.3.1":31}}
+#  "byVersion":{"claude:0.3.2":12,"codex-cli:0.3.2":4,"codex-app:0.3.2":31}}
 ```
 
 ### README badge

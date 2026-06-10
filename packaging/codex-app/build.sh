@@ -18,7 +18,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 OUT="$HERE/build"
 APP="$OUT/Red Pen(Codex).app"
-VERSION="0.3.1"
+VERSION="0.3.2"
 BUNDLE_ID="org.redpen.app"
 PB=/usr/libexec/PlistBuddy
 

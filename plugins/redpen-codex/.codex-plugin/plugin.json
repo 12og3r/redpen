@@ -1,7 +1,7 @@
 {
   "name": "redpen-codex",
   "description": "Scores and rewrites every user prompt in your chosen target language (English, Chinese, Spanish, or Japanese) via a UserPromptSubmit hook. Codex CLI port of redpen. Feedback is shown to you only, not added to the model's context.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "author": {
     "name": "roger.kwan"
   },
