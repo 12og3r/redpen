@@ -20,20 +20,22 @@ single user idling on one version is never re-counted. Existing installs are
 back-filled once on their first run after this ships. Any user can opt out
 entirely by setting `REDPEN_NO_TELEMETRY=1`.
 
-The plugin version is sent as `&v=<version>` (software metadata, not user
-data); the Worker keeps an optional per-version breakdown under `byVersion` in
-`/stats`.
+The version is used **only locally** (stored in the marker) to decide when to
+re-ping after an update. It is never sent to or stored by the Worker — the only
+thing on the wire is the channel label, and each ping is a single KV write.
 
 ## How the channels are counted
 
 | Channel | Counted by | When |
 |---|---|---|
-| `codex-app` | `scripts/install-codex-app.sh` ping **and** GitHub Release asset download stats | every install/update (the install script re-runs) |
-| `claude` | `plugins/redpen/hooks/grammar_check.sh` ping | first prompt after each install/update |
-| `codex-cli` | `plugins/redpen-codex/shared/coach_codex.sh` ping | first prompt after each install/update |
+| `claude` | `plugins/redpen/hooks/grammar_check.sh` (Claude Code hook) | first prompt after each install/update |
+| `codex-cli` | `plugins/redpen-codex/shared/coach_codex.sh` (Codex plugin hook, default host) | first prompt after each install/update |
+| `codex-app` | the same coach, run by the launcher with `REDPEN_HOST=codex-app` | first prompt after each install/update |
 
-> The Codex App is also counted natively by GitHub on the Release page
-> (asset download_count). The ping just unifies all three into one dashboard.
+All three count **at runtime** (first use per version), so every install method
+— marketplace, DMG, curl, local build — is captured uniformly. The Codex App's
+DMG/binary downloads are *also* counted natively by GitHub on the Release page
+(asset `download_count`), independent of this Worker.
 
 ## Deploy (one time)
 
@@ -55,13 +57,11 @@ Wrangler prints your Worker URL, e.g.
 
 ## Wire the clients to your URL
 
-After deploying, set that URL as `REDPEN_TELEMETRY_URL` in three places (each
-currently holds a `REPLACE_WITH_...` placeholder and is a **no-op until you do
-this**):
+The two ping sites default to this repo's Worker URL; a fork should point them
+at its own by editing the `base=` default (or exporting `REDPEN_TELEMETRY_URL`):
 
-- `plugins/redpen/hooks/grammar_check.sh`
-- `plugins/redpen-codex/shared/coach_codex.sh`
-- `scripts/install-codex-app.sh`
+- `plugins/redpen/hooks/grammar_check.sh` — counts `claude`
+- `plugins/redpen-codex/shared/coach_codex.sh` — counts `codex-cli` / `codex-app`
 
 Use the **base** URL (no trailing `/hit`); the clients append `/hit?c=<channel>`.
 
@@ -69,8 +69,7 @@ Use the **base** URL (no trailing `/hit`); the clients append `/hit?c=<channel>`
 
 ```sh
 curl https://redpen-telemetry.<your-subdomain>.workers.dev/stats
-# {"claude":12,"codex-cli":4,"codex-app":31,"total":47,
-#  "byVersion":{"claude:0.3.2":12,"codex-cli:0.3.2":4,"codex-app:0.3.2":31}}
+# {"claude":12,"codex-cli":4,"codex-app":31,"total":47}
 ```
 
 ### README badge

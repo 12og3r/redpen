@@ -57,7 +57,7 @@ if [[ -n "$_rp_channel" ]]; then
     [[ -z "$ver" ]] && ver="unknown"
     [[ "$(cat "$_rp_marker" 2>/dev/null)" == "$ver" ]] && return 0
     printf '%s' "$ver" > "$_rp_marker" 2>/dev/null || return 0
-    ( curl -sf -m 3 "${base%/}/hit?c=${_rp_channel}&v=${ver}" >/dev/null 2>&1 & ) 2>/dev/null
+    ( curl -sf -m 3 "${base%/}/hit?c=${_rp_channel}" >/dev/null 2>&1 & ) 2>/dev/null
   }
   redpen_ping
 fi

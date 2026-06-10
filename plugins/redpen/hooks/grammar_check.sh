@@ -42,7 +42,7 @@ redpen_ping() {
   local marker="${HOME}/.claude/.redpen_counted"
   [[ "$(cat "$marker" 2>/dev/null)" == "$ver" ]] && return 0
   printf '%s' "$ver" > "$marker" 2>/dev/null || return 0
-  ( curl -sf -m 3 "${base%/}/hit?c=claude&v=${ver}" >/dev/null 2>&1 & ) 2>/dev/null
+  ( curl -sf -m 3 "${base%/}/hit?c=claude" >/dev/null 2>&1 & ) 2>/dev/null
 }
 redpen_ping
 

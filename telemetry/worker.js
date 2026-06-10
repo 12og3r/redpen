@@ -24,17 +24,11 @@ export default {
       // Only known channels are counted; anything else is silently ignored so
       // a malformed/abusive label can't create arbitrary KV keys.
       if (CHANNELS.includes(c)) {
-        // Channel total — grows with every install AND every update.
+        // One write per ping. The counter grows with every install AND every
+        // update — the client decides when to ping (version-aware marker); the
+        // version itself is never sent or stored here, only the channel label.
         const cur = parseInt((await env.COUNTS.get(c)) || "0", 10);
         await env.COUNTS.put(c, String(cur + 1));
-        // Optional per-version breakdown. `v` is a software version string
-        // (not user data); sanitized to a short safe charset before use.
-        const v = (url.searchParams.get("v") || "").replace(/[^A-Za-z0-9._-]/g, "").slice(0, 32);
-        if (v) {
-          const vk = `v:${c}:${v}`;
-          const vcur = parseInt((await env.COUNTS.get(vk)) || "0", 10);
-          await env.COUNTS.put(vk, String(vcur + 1));
-        }
       }
       // No body, not cacheable. We deliberately read nothing else off the
       // request — the IP the edge sees is never touched by this code.
@@ -53,13 +47,6 @@ export default {
         total += n;
       }
       out.total = total;
-      // Per-version breakdown (best-effort; lists the "v:<channel>:<ver>" keys).
-      const byVersion = {};
-      const list = await env.COUNTS.list({ prefix: "v:" });
-      for (const k of list.keys) {
-        byVersion[k.name.slice(2)] = parseInt((await env.COUNTS.get(k.name)) || "0", 10);
-      }
-      out.byVersion = byVersion;
       return Response.json(out, {
         headers: {
           "access-control-allow-origin": "*",
