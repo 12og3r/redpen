@@ -128,13 +128,14 @@ export default {
     return new Response("redpen telemetry ok\n", { status: 200 });
   },
 
-  // Daily rollup at 00:00 UTC. Re-rolls the last few UTC days (not just
-  // yesterday) so the pipeline self-heals: a night that fails entirely is
-  // corrected on the next run, and late-arriving boundary events get picked up.
-  // Per-day query is retried; one bad day never blocks the others. ~one KV
-  // write per channel per day in the window — well within the free quota.
+  // Daily rollup at 00:00 UTC. Re-rolls the last 2 UTC days (not just
+  // yesterday) so the pipeline self-heals: one fully-failed night is corrected
+  // on the next run, and late-arriving boundary events get picked up. (3+ days
+  // would only help if two nights fail in a row — rare, and AE keeps 90 days
+  // for manual backfill.) Per-day query is retried; one bad day never blocks
+  // the others. ~one KV write per channel per day — negligible vs the quota.
   async scheduled(event, env, ctx) {
-    const WINDOW_DAYS = 3;
+    const WINDOW_DAYS = 2;
     const errors = [];
     for (let i = 1; i <= WINDOW_DAYS; i++) {
       const day = utcDay(new Date(Date.now() - i * 86400000));
