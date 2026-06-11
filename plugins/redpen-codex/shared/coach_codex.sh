@@ -36,8 +36,8 @@ fi
 # no prompt text, no IP (the Worker never reads it), no user data. Opt out with
 # REDPEN_NO_TELEMETRY=1. See telemetry/README.md.
 case "${REDPEN_HOST:-codex-cli}" in
-  codex-cli) _rp_channel="codex-cli"; _rp_marker="${HOME}/.codex/.redpen_counted" ;;
-  codex-app) _rp_channel="codex-app"; _rp_marker="${HOME}/.codex/.redpen_counted_app" ;;
+  codex-cli) _rp_channel="codex-cli"; _rp_marker="${HOME}/.codex/.redpen_counted"; _rp_active="${HOME}/.codex/.redpen_active" ;;
+  codex-app) _rp_channel="codex-app"; _rp_marker="${HOME}/.codex/.redpen_counted_app"; _rp_active="${HOME}/.codex/.redpen_active_app" ;;
   *)         _rp_channel="" ;;
 esac
 if [[ -n "$_rp_channel" ]]; then
@@ -60,6 +60,20 @@ if [[ -n "$_rp_channel" ]]; then
     ( curl -sf -m 3 "${base%/}/hit?c=${_rp_channel}" >/dev/null 2>&1 & ) 2>/dev/null
   }
   redpen_ping
+
+  # Anonymous daily-active ping (once per UTC day, never blocks). PRIVATE — not
+  # on /stats or any badge. Sends only the channel label; the day is bucketed
+  # server-side. Opt out with REDPEN_NO_TELEMETRY=1.
+  redpen_active_ping() {
+    local base="${REDPEN_TELEMETRY_URL:-https://redpen-telemetry.redpen.workers.dev}"
+    case "$base" in REPLACE_WITH_*) return 0 ;; esac
+    [[ "${REDPEN_NO_TELEMETRY:-0}" == "1" ]] && return 0
+    local today; today="$(date -u +%Y-%m-%d)"
+    [[ "$(cat "$_rp_active" 2>/dev/null)" == "$today" ]] && return 0
+    printf '%s' "$today" > "$_rp_active" 2>/dev/null || return 0
+    ( curl -sf -m 3 "${base%/}/active?c=${_rp_channel}" >/dev/null 2>&1 & ) 2>/dev/null
+  }
+  redpen_active_ping
 fi
 
 INPUT="$(cat)"

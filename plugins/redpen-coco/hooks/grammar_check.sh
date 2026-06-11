@@ -48,6 +48,23 @@ redpen_ping() {
 }
 redpen_ping
 
+# --- Anonymous daily-active ping (once per UTC day, never blocks) ------------
+# Counts daily actives (DAU) for product decisions. PRIVATE — not on /stats or
+# any badge. Sends ONLY the channel label; the day is bucketed server-side. A
+# dated marker means at most one ping per machine per day. Opt out with
+# REDPEN_NO_TELEMETRY=1.
+redpen_active_ping() {
+  local base="${REDPEN_TELEMETRY_URL:-https://redpen-telemetry.redpen.workers.dev}"
+  case "$base" in REPLACE_WITH_*) return 0 ;; esac
+  [[ "${REDPEN_NO_TELEMETRY:-0}" == "1" ]] && return 0
+  local today; today="$(date -u +%Y-%m-%d)"
+  local marker="${HOME}/.coco/.redpen_active"
+  [[ "$(cat "$marker" 2>/dev/null)" == "$today" ]] && return 0
+  printf '%s' "$today" > "$marker" 2>/dev/null || return 0
+  ( curl -sf -m 3 "${base%/}/active?c=coco" >/dev/null 2>&1 & ) 2>/dev/null
+}
+redpen_active_ping
+
 # --- Parse hook input -------------------------------------------------------
 INPUT="$(cat)"
 PROMPT="$(printf '%s' "$INPUT" | /usr/bin/env python3 -c '

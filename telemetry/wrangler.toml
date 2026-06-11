@@ -7,3 +7,21 @@ compatibility_date = "2025-01-01"
 [[kv_namespaces]]
 binding = "COUNTS"
 id = "7d3101662373425cbdfe246f32267b62"
+
+# Analytics Engine: stores the raw daily-active (DAU) events. Requires AE to be
+# enabled on the account (Dashboard -> Workers -> Analytics Engine). The
+# dataset name must match the one created there ("redpen_DAU"); binding is how
+# the Worker code refers to it (env.AE).
+[[analytics_engine_datasets]]
+binding = "AE"
+dataset = "redpen_DAU"
+
+# Daily rollup: 00:00 UTC every day -> scheduled() rolls yesterday's AE DAU
+# into permanent KV buckets. (Cron is UTC-only; for local midnight, shift the
+# hour, e.g. Beijing 00:00 == "0 16 * * *".)
+[triggers]
+crons = ["0 0 * * *"]
+
+# Account id for the cron's Analytics Engine SQL query (not a secret).
+[vars]
+CF_ACCOUNT_ID = "127c6a7faac67db993ee115c1d759177"
