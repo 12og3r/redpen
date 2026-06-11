@@ -33,6 +33,37 @@ const CHANNEL_RE = /^[a-z][a-z0-9-]{1,31}$/;
 const validChannel = (c) => CHANNEL_RE.test(c) && CHANNELS.includes(c);
 
 const utcDay = (d) => d.toISOString().slice(0, 10); // YYYY-MM-DD
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Roll one UTC day's DAU from Analytics Engine into permanent KV buckets.
+// Retries the AE query a few times on transient failure. Idempotent: rolling
+// the same day again just overwrites each channel's bucket with the same value.
+async function rollupDay(env, day, retries = 3) {
+  const sql =
+    `SELECT blob1 AS channel, SUM(_sample_interval) AS dau ` +
+    `FROM redpen_DAU WHERE toDate(timestamp) = '${day}' GROUP BY channel`;
+  let lastErr;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const resp = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/analytics_engine/sql`,
+        { method: "POST", headers: { Authorization: `Bearer ${env.CF_API_TOKEN}` }, body: sql }
+      );
+      if (!resp.ok) throw new Error(`AE SQL ${resp.status}: ${(await resp.text()).slice(0, 200)}`);
+      const json = await resp.json();
+      for (const row of json.data || []) {
+        if (validChannel(row.channel)) {
+          await env.COUNTS.put(`dau:${row.channel}:${day}`, String(Math.round(Number(row.dau) || 0)));
+        }
+      }
+      return; // success
+    } catch (e) {
+      lastErr = e;
+      if (attempt < retries) await sleep(500 * attempt); // linear backoff
+    }
+  }
+  throw lastErr;
+}
 
 export default {
   async fetch(request, env) {
@@ -97,24 +128,24 @@ export default {
     return new Response("redpen telemetry ok\n", { status: 200 });
   },
 
-  // Daily rollup: at 00:00 UTC, query Analytics Engine for *yesterday's* DAU per
-  // channel and persist one KV key per channel (permanent history). KV writes
-  // here are ~one per active channel per day — well within the free quota.
+  // Daily rollup at 00:00 UTC. Re-rolls the last few UTC days (not just
+  // yesterday) so the pipeline self-heals: a night that fails entirely is
+  // corrected on the next run, and late-arriving boundary events get picked up.
+  // Per-day query is retried; one bad day never blocks the others. ~one KV
+  // write per channel per day in the window — well within the free quota.
   async scheduled(event, env, ctx) {
-    const yday = utcDay(new Date(Date.now() - 86400000));
-    const sql =
-      `SELECT blob1 AS channel, SUM(_sample_interval) AS dau ` +
-      `FROM redpen_DAU WHERE toDate(timestamp) = '${yday}' GROUP BY channel`;
-    const resp = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/analytics_engine/sql`,
-      { method: "POST", headers: { Authorization: `Bearer ${env.CF_API_TOKEN}` }, body: sql }
-    );
-    if (!resp.ok) throw new Error(`AE SQL failed: ${resp.status} ${await resp.text()}`);
-    const json = await resp.json();
-    for (const row of json.data || []) {
-      if (validChannel(row.channel)) {
-        await env.COUNTS.put(`dau:${row.channel}:${yday}`, String(Math.round(Number(row.dau) || 0)));
+    const WINDOW_DAYS = 3;
+    const errors = [];
+    for (let i = 1; i <= WINDOW_DAYS; i++) {
+      const day = utcDay(new Date(Date.now() - i * 86400000));
+      try {
+        await rollupDay(env, day);
+      } catch (e) {
+        errors.push(`${day}: ${e.message}`);
       }
     }
+    // Surface failures (run shows errored in the dashboard) only after every
+    // day has been attempted.
+    if (errors.length) throw new Error(`DAU rollup failed for ${errors.join("; ")}`);
   },
 };
