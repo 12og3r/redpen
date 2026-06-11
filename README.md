@@ -2,8 +2,7 @@
 
 [![installs](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24.total&label=installs&color=brightgreen)](#telemetry--privacy)
 [![Claude Code](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24.claude&label=Claude%20Code&color=blue)](#telemetry--privacy)
-[![Codex CLI](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24%5B%27codex-cli%27%5D&label=Codex%20CLI&color=blue)](#telemetry--privacy)
-[![Codex App](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24%5B%27codex-app%27%5D&label=Codex%20App&color=blue)](#telemetry--privacy)
+[![Codex](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24.codex&label=Codex&color=blue)](#telemetry--privacy)
 [![coco](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24.coco&label=coco&color=blue)](#telemetry--privacy)
 
 A personal agent CLI plugin that **marks up every prompt you type** like
