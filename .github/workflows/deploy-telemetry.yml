@@ -13,7 +13,7 @@ name: Deploy telemetry Worker
 
 on:
   push:
-    branches: [main, ci/auto-deploy-telemetry-worker]  # TEMP: test on feature branch; revert to [main] before merge
+    branches: [main]
     paths:
       - "telemetry/**"
       - ".github/workflows/deploy-telemetry.yml"
