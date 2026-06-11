@@ -1,0 +1,39 @@
+name: Deploy telemetry Worker
+
+# Auto-deploy the Cloudflare Worker whenever the telemetry code changes on main.
+# Without this, editing telemetry/worker.js (e.g. adding a channel) only changes
+# the source — the live Worker keeps running the old version until someone runs
+# `wrangler deploy` by hand. This closes that gap.
+#
+# Requires one repository secret:
+#   CLOUDFLARE_API_TOKEN  - a Cloudflare API token with "Workers Scripts: Edit"
+#                           (Account scope). If the token can see more than one
+#                           account, also add CLOUDFLARE_ACCOUNT_ID.
+# Add it under: Settings -> Secrets and variables -> Actions -> New secret.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "telemetry/**"
+      - ".github/workflows/deploy-telemetry.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Cloudflare Worker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: telemetry
+          command: deploy

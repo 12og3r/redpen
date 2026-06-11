@@ -56,6 +56,15 @@ npx wrangler deploy
 Wrangler prints your Worker URL, e.g.
 `https://redpen-telemetry.<your-subdomain>.workers.dev`.
 
+### Auto-deploy on change (CI)
+
+After the one-time setup above, `.github/workflows/deploy-telemetry.yml`
+redeploys the Worker automatically whenever `telemetry/**` changes on `main`
+(so editing `worker.js` — e.g. adding a channel — can't silently leave the live
+Worker stale). It needs one repository secret, `CLOUDFLARE_API_TOKEN` (a token
+with **Workers Scripts: Edit**; add `CLOUDFLARE_ACCOUNT_ID` too if the token
+spans multiple accounts). You can still deploy by hand with `wrangler deploy`.
+
 ## Wire the clients to your URL
 
 The three ping sites default to this repo's Worker URL; a fork should point
