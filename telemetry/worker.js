@@ -68,6 +68,9 @@ export default {
         total += n;
       }
       out.total = total;
+      // Derived (read-time only; no KV key): the two Codex channels merged for a
+      // single badge. The underlying codex-cli / codex-app keys are untouched.
+      out.codex = (out["codex-cli"] || 0) + (out["codex-app"] || 0);
       return Response.json(out, {
         headers: { "access-control-allow-origin": "*", "cache-control": "public, max-age=300" },
       });
