@@ -24,7 +24,7 @@
 // Secrets:  CF_API_TOKEN (Account Analytics: Read, for the cron's AE SQL query),
 //           DAU_TOKEN     (gates /dau reads; until set, /dau is 403).
 
-const CHANNELS = ["claude", "codex-cli", "codex-app", "coco"];
+const CHANNELS = ["claude", "codex-cli", "chatgpt-app", "codex-app", "coco"];
 
 // Anti-abuse: a channel must match this shape AND be in the allow-list, else the
 // request is rejected (400) and nothing is written. The allow-list alone already
@@ -99,9 +99,12 @@ export default {
         total += n;
       }
       out.total = total;
-      // Derived (read-time only; no KV key): the two Codex channels merged for a
-      // single badge. The underlying codex-cli / codex-app keys are untouched.
-      out.codex = (out["codex-cli"] || 0) + (out["codex-app"] || 0);
+      // Derived (read-time only; no KV key): all OpenAI-hosted installs merged
+      // for a stable badge. The legacy codex-app key remains for history.
+      out.codex =
+        (out["codex-cli"] || 0) +
+        (out["chatgpt-app"] || 0) +
+        (out["codex-app"] || 0);
       return Response.json(out, {
         headers: { "access-control-allow-origin": "*", "cache-control": "public, max-age=300" },
       });

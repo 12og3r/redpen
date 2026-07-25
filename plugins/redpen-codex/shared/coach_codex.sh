@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared Codex runner for redpen-codex hosts.
+# Shared OpenAI runner for the ChatGPT desktop launcher and Codex hook.
 #
 # Input:  JSON on stdin with a "prompt" field.
 # Output: empty stdout for skipped turns, or either:
@@ -30,13 +30,14 @@ fi
 # This same coach runs in two hosts, so it counts first-use per version for
 # both — each on its own channel + marker so they never collide:
 #   - codex-cli : the Codex plugin hook (REDPEN_HOST unset -> default)
-#   - codex-app : the experimental launcher binary (sets REDPEN_HOST=codex-app)
+#   - chatgpt-app : the desktop launcher binary (sets REDPEN_HOST=chatgpt-app)
 # Counting at runtime (not install time) means every install method is captured
 # — DMG, curl, plugin marketplace, etc. Sends ONLY a channel label + version:
 # no prompt text, no IP (the Worker never reads it), no user data. Opt out with
 # REDPEN_NO_TELEMETRY=1. See telemetry/README.md.
 case "${REDPEN_HOST:-codex-cli}" in
   codex-cli) _rp_channel="codex-cli"; _rp_marker="${HOME}/.codex/.redpen_counted"; _rp_active="${HOME}/.codex/.redpen_active" ;;
+  chatgpt-app) _rp_channel="chatgpt-app"; _rp_marker="${HOME}/.codex/.redpen_counted_chatgpt_app"; _rp_active="${HOME}/.codex/.redpen_active_chatgpt_app" ;;
   codex-app) _rp_channel="codex-app"; _rp_marker="${HOME}/.codex/.redpen_counted_app"; _rp_active="${HOME}/.codex/.redpen_active_app" ;;
   *)         _rp_channel="" ;;
 esac
@@ -146,8 +147,16 @@ if (( ${#PROMPT} > MAX_PROMPT_CHARS )); then
   exit 0
 fi
 
-CODEX_BIN="$(command -v codex || true)"
+CODEX_BIN="${REDPEN_CODEX_BIN:-}"
+if [[ -z "$CODEX_BIN" ]]; then
+  CODEX_BIN="$(command -v codex || true)"
+fi
 if [[ -z "$CODEX_BIN" ]]; then log "skip: codex CLI not on PATH"; exit 0; fi
+if [[ ! -x "$CODEX_BIN" ]]; then
+  log "skip: codex CLI is not executable: $CODEX_BIN"
+  exit 0
+fi
+log "codex_bin=$CODEX_BIN"
 
 _REDPEN_SHARED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" \
   || { log "fatal: cannot resolve shared/ relative to runner"; exit 0; }
@@ -204,18 +213,34 @@ ARGS+=(
   "$PROMPT_FOR_CODEX"
 )
 
+CODEX_STDERR_FILE="$(mktemp "${TMPDIR:-/tmp}/redpen-codex-stderr.XXXXXX")" \
+  || { log "fatal: cannot create temporary stderr file"; exit 0; }
+trap 'rm -f "$CODEX_STDERR_FILE"' EXIT
+
 REWRITTEN="$(
   if [[ -n "$CLEAN_CWD" ]]; then cd "$CLEAN_CWD"; fi
   REDPEN_ACTIVE=1 \
-    "$CODEX_BIN" "${ARGS[@]}" </dev/null 2>/dev/null
+    "$CODEX_BIN" "${ARGS[@]}" </dev/null 2>"$CODEX_STDERR_FILE"
 )"
+CODEX_STATUS=$?
+CODEX_STDERR="$(head -c 600 "$CODEX_STDERR_FILE" | tr '\r\n' '  ')"
+rm -f "$CODEX_STDERR_FILE"
+trap - EXIT
+
+if (( CODEX_STATUS != 0 )); then
+  log "skip: codex CLI failed status=$CODEX_STATUS stderr=${CODEX_STDERR:-<empty>}"
+  exit 0
+fi
 
 REWRITTEN="${REWRITTEN#"${REWRITTEN%%[![:space:]]*}"}"
 REWRITTEN="${REWRITTEN%"${REWRITTEN##*[![:space:]]}"}"
 
 log "rewrite[0..120]=$(printf '%s' "$REWRITTEN" | head -c 120)"
 
-if [[ -z "$REWRITTEN" ]]; then log "skip: empty rewrite"; exit 0; fi
+if [[ -z "$REWRITTEN" ]]; then
+  log "skip: empty rewrite stderr=${CODEX_STDERR:-<empty>}"
+  exit 0
+fi
 
 if [[ "${REDPEN_OUTPUT:-}" == "structured" ]]; then
   OUTPUT_JSON="$(REWRITTEN="$REWRITTEN" ORIGINAL_PROMPT="$PROMPT" LT_LANGUAGE="$LANGUAGE" \

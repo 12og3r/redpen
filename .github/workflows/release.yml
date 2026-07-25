@@ -33,10 +33,11 @@ jobs:
           bash -n plugins/redpen-codex/hooks/grammar_check.sh
           bash -n plugins/redpen/hooks/grammar_check.sh
           sh -n scripts/install-codex-app.sh
+          sh -n scripts/install-chatgpt-app.sh
 
       - name: Verify renderer JavaScript
         run: |
-          node -e 'const fs = require("fs"); new Function(fs.readFileSync("assets/codex-app/renderer-inject.js", "utf8"));'
+          node -e 'const fs = require("fs"); new Function(fs.readFileSync("assets/chatgpt-app/renderer-inject.js", "utf8"));'
 
       - name: Run Rust tests
         run: cargo test --workspace --locked
@@ -54,12 +55,12 @@ jobs:
           lipo -create \
             target/aarch64-apple-darwin/release/redpen-codex-app \
             target/x86_64-apple-darwin/release/redpen-codex-app \
-            -output dist/redpen-codex-app-macos-universal
-          chmod +x dist/redpen-codex-app-macos-universal
-          # Checksum that install-codex-app.sh verifies with `shasum -c`.
+            -output dist/redpen-chatgpt-app-macos-universal
+          chmod +x dist/redpen-chatgpt-app-macos-universal
+          # Checksum that install-chatgpt-app.sh verifies with `shasum -c`.
           # Generated from inside dist/ so the file lists a bare filename.
-          ( cd dist && shasum -a 256 redpen-codex-app-macos-universal \
-              > redpen-codex-app-macos-universal.sha256 )
+          ( cd dist && shasum -a 256 redpen-chatgpt-app-macos-universal \
+              > redpen-chatgpt-app-macos-universal.sha256 )
 
       - name: Install dmgbuild
         run: |
@@ -71,9 +72,9 @@ jobs:
       - name: Build Red Pen installer (.dmg)
         run: |
           set -eu
-          # Uses the committed app icon (no Codex.app needed) and embeds the
+          # Uses the committed app icon (no ChatGPT.app needed) and embeds the
           # universal binary built above. dmgbuild styles the image headlessly.
-          BIN="$PWD/dist/redpen-codex-app-macos-universal" bash packaging/codex-app/build.sh
+          BIN="$PWD/dist/redpen-chatgpt-app-macos-universal" bash packaging/codex-app/build.sh
           bash packaging/codex-app/make-dmg.sh
           # GitHub replaces spaces in release-asset names with periods, so the
           # distributed file has no space (the mounted volume stays "Red Pen").
@@ -87,12 +88,13 @@ jobs:
           set -eu
           # All assets the install paths need:
           #   RedPen.dmg                         - manual drag-install
-          #   redpen-codex-app-macos-universal   - binary the curl installer fetches
+          #   redpen-chatgpt-app-macos-universal - binary the curl installer fetches
           #   ...sha256                          - checksum the installer verifies
-          #   install-codex-app.sh               - the curl installer itself
+          #   install-chatgpt-app.sh             - the curl installer itself
           assets="dist/RedPen.dmg \
-            dist/redpen-codex-app-macos-universal \
-            dist/redpen-codex-app-macos-universal.sha256 \
+            dist/redpen-chatgpt-app-macos-universal \
+            dist/redpen-chatgpt-app-macos-universal.sha256 \
+            scripts/install-chatgpt-app.sh \
             scripts/install-codex-app.sh"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" $assets --clobber

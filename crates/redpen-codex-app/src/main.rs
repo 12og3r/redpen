@@ -26,9 +26,10 @@ use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream, connect_async, tungstenite::protocol::Message,
 };
 
-const DEFAULT_CODEX_APP: &str = "/Applications/Codex.app";
-const BINDING_NAME: &str = "__redpenCodexApp";
-const INJECT_JS: &str = include_str!("../../../assets/codex-app/renderer-inject.js");
+const DEFAULT_CHATGPT_APP: &str = "/Applications/ChatGPT.app";
+const LEGACY_CODEX_APP: &str = "/Applications/Codex.app";
+const BINDING_NAME: &str = "__redpenChatgptApp";
+const INJECT_JS: &str = include_str!("../../../assets/chatgpt-app/renderer-inject.js");
 const BUNDLED_COACH_CODEX: &str =
     include_str!("../../../plugins/redpen-codex/shared/coach_codex.sh");
 const BUNDLED_COACH_PROMPTS: &str =
@@ -37,8 +38,8 @@ const BUNDLED_RENDER_DIFF: &str =
     include_str!("../../../plugins/redpen-codex/shared/render_diff.py");
 
 #[derive(Parser)]
-#[command(name = "redpen-codex-app")]
-#[command(about = "Launch Codex App with redpen feedback injected through CDP.")]
+#[command(name = "redpen-chatgpt-app")]
+#[command(about = "Launch ChatGPT with redpen feedback injected through CDP.")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -51,8 +52,9 @@ enum Commands {
 
 #[derive(Parser, Debug)]
 struct LaunchArgs {
-    #[arg(long, default_value = DEFAULT_CODEX_APP)]
-    codex_app: PathBuf,
+    /// ChatGPT application bundle. --codex-app remains as a compatibility alias.
+    #[arg(long, visible_alias = "codex-app")]
+    chatgpt_app: Option<PathBuf>,
 
     #[arg(long)]
     coach_script: Option<PathBuf>,
@@ -104,9 +106,10 @@ async fn main() -> Result<()> {
 }
 
 async fn launch(args: LaunchArgs) -> Result<()> {
-    let codex_app = args.codex_app;
-    ensure_codex_app(&codex_app)?;
-    ensure_codex_not_running(&codex_app).await?;
+    let host_app = resolve_host_app(args.chatgpt_app);
+    let host_executable = ensure_host_app(&host_app)?;
+    let codex_bin = bundled_codex_bin(&host_app);
+    ensure_host_not_running(&host_executable).await?;
 
     let coach_script = resolve_coach_script(args.coach_script)?;
 
@@ -115,14 +118,14 @@ async fn launch(args: LaunchArgs) -> Result<()> {
         None => free_port().await?,
     };
 
-    let mut codex_process = spawn_codex_app(&codex_app, debug_port)
+    let mut host_process = spawn_host_app(&host_app, debug_port)
         .await
-        .context("failed to launch Codex App")?;
+        .context("failed to launch ChatGPT")?;
 
     let target = match wait_for_target(debug_port).await {
         Ok(target) => target,
         Err(err) => {
-            let _ = codex_process.kill().await;
+            let _ = host_process.kill().await;
             return Err(err);
         }
     };
@@ -135,19 +138,19 @@ async fn launch(args: LaunchArgs) -> Result<()> {
     .await?;
     install_redpen(&mut cdp).await?;
 
-    println!("redpen launcher injected into Codex App on CDP port {debug_port}.");
+    println!("redpen launcher injected into ChatGPT on CDP port {debug_port}.");
 
-    let mut pump = tokio::spawn(async move { cdp.pump_bindings(coach_script).await });
+    let mut pump = tokio::spawn(async move { cdp.pump_bindings(coach_script, codex_bin).await });
     tokio::select! {
-        status = codex_process.wait() => {
+        status = host_process.wait() => {
             pump.abort();
             let status = status?;
             if !status.success() {
-                bail!("Codex App exited with status {}", status);
+                bail!("ChatGPT exited with status {}", status);
             }
         }
         pump_result = &mut pump => {
-            let _ = codex_process.kill().await;
+            let _ = host_process.kill().await;
             pump_result.context("redpen bridge task panicked")??;
         }
     }
@@ -187,12 +190,16 @@ async fn install_redpen(client: &mut CdpClient) -> Result<()> {
     Ok(())
 }
 
-async fn run_coach(coach_script: &Path, payload: CoachRequest) -> Result<Value> {
+async fn run_coach(
+    coach_script: &Path,
+    codex_bin: Option<&Path>,
+    payload: CoachRequest,
+) -> Result<Value> {
     let mut command = Command::new("bash");
     command
         .arg(coach_script)
         .env("REDPEN_OUTPUT", "structured")
-        .env("REDPEN_HOST", "codex-app")
+        .env("REDPEN_HOST", "chatgpt-app")
         // The coach runs from a runtime dir without the plugin tree, so it
         // can't read the manifest version; hand it our own version for the
         // anonymous per-version install ping (see coach_codex.sh).
@@ -201,6 +208,9 @@ async fn run_coach(coach_script: &Path, payload: CoachRequest) -> Result<Value> 
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
+    if let Some(codex_bin) = codex_bin {
+        command.env("REDPEN_CODEX_BIN", codex_bin);
+    }
 
     let mut child = command.spawn().with_context(|| {
         format!(
@@ -290,7 +300,7 @@ fn bundled_runtime_dir() -> Result<PathBuf> {
     Ok(PathBuf::from(home)
         .join("Library")
         .join("Application Support")
-        .join("redpen-codex-app")
+        .join("redpen-chatgpt-app")
         .join("runtime")
         .join(env!("CARGO_PKG_VERSION")))
 }
@@ -312,19 +322,40 @@ fn write_bundled_file(path: &Path, content: &str, mode: Option<u32>) -> Result<(
     Ok(())
 }
 
-fn ensure_codex_app(codex_app: &Path) -> Result<()> {
-    let macos_bin = codex_app.join("Contents/MacOS/Codex");
-    if !macos_bin.exists() {
-        bail!(
-            "Codex App executable not found at {}. Pass --codex-app if your install lives elsewhere.",
-            macos_bin.display()
-        );
+fn resolve_host_app(explicit: Option<PathBuf>) -> PathBuf {
+    if let Some(path) = explicit {
+        return path;
     }
-    Ok(())
+    let chatgpt = PathBuf::from(DEFAULT_CHATGPT_APP);
+    if chatgpt.exists() {
+        return chatgpt;
+    }
+    let codex = PathBuf::from(LEGACY_CODEX_APP);
+    if codex.exists() {
+        return codex;
+    }
+    chatgpt
 }
 
-async fn ensure_codex_not_running(codex_app: &Path) -> Result<()> {
-    let macos_bin = codex_app.join("Contents/MacOS/Codex");
+fn ensure_host_app(host_app: &Path) -> Result<PathBuf> {
+    for executable in ["ChatGPT", "Codex"] {
+        let macos_bin = host_app.join("Contents/MacOS").join(executable);
+        if macos_bin.exists() {
+            return Ok(macos_bin);
+        }
+    }
+    bail!(
+        "ChatGPT executable not found in {}. Pass --chatgpt-app if your install lives elsewhere.",
+        host_app.display()
+    )
+}
+
+fn bundled_codex_bin(host_app: &Path) -> Option<PathBuf> {
+    let codex = host_app.join("Contents/Resources/codex");
+    codex.is_file().then_some(codex)
+}
+
+async fn ensure_host_not_running(macos_bin: &Path) -> Result<()> {
     let output = Command::new("ps")
         .args(["-axo", "command"])
         .output()
@@ -334,18 +365,18 @@ async fn ensure_codex_not_running(codex_app: &Path) -> Result<()> {
     let marker = macos_bin.to_string_lossy();
     if commands.lines().any(|line| line.contains(marker.as_ref())) {
         bail!(
-            "Codex App is already running. Quit it first, then launch through redpen so remote debugging can be enabled."
+            "ChatGPT is already running. Quit it first, then launch through redpen so remote debugging can be enabled."
         );
     }
     Ok(())
 }
 
-async fn spawn_codex_app(codex_app: &Path, debug_port: u16) -> Result<tokio::process::Child> {
+async fn spawn_host_app(host_app: &Path, debug_port: u16) -> Result<tokio::process::Child> {
     let mut command = Command::new("open");
     command
         .arg("-W")
         .arg("-n")
-        .arg(codex_app)
+        .arg(host_app)
         .arg("--args")
         .arg(format!("--remote-debugging-port={debug_port}"))
         .arg(format!(
@@ -380,7 +411,7 @@ async fn wait_for_target(debug_port: u16) -> Result<DebugTarget> {
         sleep(Duration::from_millis(250)).await;
     }
 
-    Err(last_err.unwrap_or_else(|| anyhow!("timed out waiting for Codex debug target")))
+    Err(last_err.unwrap_or_else(|| anyhow!("timed out waiting for ChatGPT debug target")))
 }
 
 fn choose_target(targets: Vec<DebugTarget>) -> Option<DebugTarget> {
@@ -392,12 +423,22 @@ fn choose_target(targets: Vec<DebugTarget>) -> Option<DebugTarget> {
     let preferred = pages.iter().position(|target| {
         let title = target.title.as_deref().unwrap_or("").to_ascii_lowercase();
         let url = target.url.as_deref().unwrap_or("").to_ascii_lowercase();
-        title.contains("codex") || url.contains("codex")
+        title.contains("chatgpt") || url.contains("chatgpt")
     });
 
     match preferred {
         Some(idx) => Some(pages.remove(idx)),
-        None => pages.into_iter().next(),
+        None => {
+            let legacy = pages.iter().position(|target| {
+                let title = target.title.as_deref().unwrap_or("").to_ascii_lowercase();
+                let url = target.url.as_deref().unwrap_or("").to_ascii_lowercase();
+                title.contains("codex") || url.contains("codex")
+            });
+            match legacy {
+                Some(idx) => Some(pages.remove(idx)),
+                None => pages.into_iter().next(),
+            }
+        }
     }
 }
 
@@ -407,7 +448,7 @@ fn build_bridge_script() -> Result<String> {
         r#"
 (() => {{
   const bindingName = {binding_name};
-  const root = window.__REDPEN_CODEX_APP__ || {{}};
+  const root = window.__REDPEN_CHATGPT_APP__ || {{}};
   root.pending = root.pending || new Map();
   root.request = function(route, payload) {{
     return new Promise((resolve, reject) => {{
@@ -441,7 +482,7 @@ fn build_bridge_script() -> Result<String> {
     entry.reject(new Error(message || "redpen request failed"));
   }};
   root.ready = true;
-  window.__REDPEN_CODEX_APP__ = root;
+  window.__REDPEN_CHATGPT_APP__ = root;
 }})();
 "#
     ))
@@ -453,7 +494,7 @@ fn build_renderer_script(bridge_script: &str) -> String {
 
 fn resolve_script(id: &str, value: &Value) -> Result<String> {
     Ok(format!(
-        "window.__REDPEN_CODEX_APP__ && window.__REDPEN_CODEX_APP__.resolve({}, {});",
+        "window.__REDPEN_CHATGPT_APP__ && window.__REDPEN_CHATGPT_APP__.resolve({}, {});",
         serde_json::to_string(id)?,
         serde_json::to_string(value)?
     ))
@@ -461,7 +502,7 @@ fn resolve_script(id: &str, value: &Value) -> Result<String> {
 
 fn reject_script(id: &str, message: &str) -> Result<String> {
     Ok(format!(
-        "window.__REDPEN_CODEX_APP__ && window.__REDPEN_CODEX_APP__.reject({}, {});",
+        "window.__REDPEN_CHATGPT_APP__ && window.__REDPEN_CHATGPT_APP__.reject({}, {});",
         serde_json::to_string(id)?,
         serde_json::to_string(message)?
     ))
@@ -528,7 +569,11 @@ impl CdpClient {
         Ok(())
     }
 
-    async fn pump_bindings(&mut self, coach_script: PathBuf) -> Result<()> {
+    async fn pump_bindings(
+        &mut self,
+        coach_script: PathBuf,
+        codex_bin: Option<PathBuf>,
+    ) -> Result<()> {
         while let Some(message) = self.read.next().await {
             let message = message?;
             if !message.is_text() {
@@ -553,7 +598,8 @@ impl CdpClient {
                 }
             };
 
-            let response = handle_bridge_request(&coach_script, &request).await;
+            let response =
+                handle_bridge_request(&coach_script, codex_bin.as_deref(), &request).await;
             let expression = match response {
                 Ok(value) => resolve_script(&request.id, &value)?,
                 Err(err) => reject_script(&request.id, &err.to_string())?,
@@ -564,12 +610,16 @@ impl CdpClient {
     }
 }
 
-async fn handle_bridge_request(coach_script: &Path, request: &BridgeRequest) -> Result<Value> {
+async fn handle_bridge_request(
+    coach_script: &Path,
+    codex_bin: Option<&Path>,
+    request: &BridgeRequest,
+) -> Result<Value> {
     match request.route.as_str() {
         "/coach" | "coach" => {
             let payload: CoachRequest = serde_json::from_value(request.payload.clone())
                 .context("invalid /coach payload")?;
-            run_coach(coach_script, payload).await
+            run_coach(coach_script, codex_bin, payload).await
         }
         other => bail!("unknown redpen route: {other}"),
     }
@@ -597,7 +647,22 @@ mod tests {
     }
 
     #[test]
-    fn choose_target_prefers_codex_page() {
+    fn choose_target_prefers_chatgpt_page() {
+        let chosen = choose_target(vec![
+            target("page", "Settings", "app://settings", Some("ws://settings")),
+            target("page", "Codex", "app://codex", Some("ws://codex")),
+            target("page", "ChatGPT", "app://chatgpt", Some("ws://chatgpt")),
+        ])
+        .expect("target");
+
+        assert_eq!(
+            chosen.websocket_debugger_url.as_deref(),
+            Some("ws://chatgpt")
+        );
+    }
+
+    #[test]
+    fn choose_target_supports_legacy_codex_page() {
         let chosen = choose_target(vec![
             target("page", "Settings", "app://settings", Some("ws://settings")),
             target("page", "Codex", "app://codex", Some("ws://codex")),
@@ -643,14 +708,45 @@ mod tests {
         let script = build_renderer_script(&bridge);
 
         assert!(script.starts_with("(() => {"));
-        assert!(script.contains("window.__REDPEN_CODEX_APP_RENDERER__"));
+        assert!(script.contains("window.__REDPEN_CHATGPT_APP_RENDERER__"));
         assert!(script.ends_with("})();"));
+    }
+
+    #[test]
+    fn host_app_executable_accepts_chatgpt_and_legacy_codex() {
+        let dir = std::env::temp_dir().join(format!("redpen-host-app-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+
+        let chatgpt = dir.join("ChatGPT.app");
+        fs::create_dir_all(chatgpt.join("Contents/MacOS")).expect("chatgpt bundle");
+        fs::create_dir_all(chatgpt.join("Contents/Resources")).expect("chatgpt resources");
+        fs::write(chatgpt.join("Contents/MacOS/ChatGPT"), "").expect("chatgpt executable");
+        fs::write(chatgpt.join("Contents/Resources/codex"), "").expect("bundled codex");
+        assert_eq!(
+            ensure_host_app(&chatgpt).expect("chatgpt executable"),
+            chatgpt.join("Contents/MacOS/ChatGPT")
+        );
+        assert_eq!(
+            bundled_codex_bin(&chatgpt),
+            Some(chatgpt.join("Contents/Resources/codex"))
+        );
+
+        let codex = dir.join("Codex.app");
+        fs::create_dir_all(codex.join("Contents/MacOS")).expect("codex bundle");
+        fs::write(codex.join("Contents/MacOS/Codex"), "").expect("codex executable");
+        assert_eq!(
+            ensure_host_app(&codex).expect("codex executable"),
+            codex.join("Contents/MacOS/Codex")
+        );
+        assert_eq!(bundled_codex_bin(&codex), None);
+
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn bundled_coach_files_are_written_together() {
         let dir =
-            std::env::temp_dir().join(format!("redpen-codex-app-test-{}", std::process::id()));
+            std::env::temp_dir().join(format!("redpen-chatgpt-app-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
 
         let coach = ensure_bundled_coach_in(&dir).expect("bundled coach");

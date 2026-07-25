@@ -1,13 +1,14 @@
 # redpen telemetry
 
 A tiny Cloudflare Worker that counts **anonymous installs across the four
-distribution channels** — Claude Code plugin, Codex CLI plugin, Codex App,
+distribution channels** — Claude Code plugin, Codex CLI plugin, ChatGPT App,
 and coco (Trae CLI) plugin — without recording any user data.
 
 ## What is and isn't collected
 
 **Collected:** a single integer per channel (`claude`, `codex-cli`,
-`codex-app`, `coco`). That's it.
+`chatgpt-app`, `coco`). The legacy `codex-app` bucket is retained only for
+historical installs.
 
 **Never collected:** IP address, User-Agent, prompt text, machine id,
 timestamp, location, or any request header. The Worker code never reads them.
@@ -30,11 +31,12 @@ thing on the wire is the channel label, and each ping is a single KV write.
 |---|---|---|
 | `claude` | `plugins/redpen/hooks/grammar_check.sh` (Claude Code hook) | first prompt after each install/update |
 | `codex-cli` | `plugins/redpen-codex/shared/coach_codex.sh` (Codex plugin hook, default host) | first prompt after each install/update |
-| `codex-app` | the same coach, run by the launcher with `REDPEN_HOST=codex-app` | first prompt after each install/update |
+| `chatgpt-app` | the same coach, run by the launcher with `REDPEN_HOST=chatgpt-app` | first prompt after each install/update |
+| `codex-app` | legacy Codex desktop launcher releases | historical only |
 | `coco` | `plugins/redpen-coco/hooks/grammar_check.sh` (coco/Trae CLI hook) | first prompt after each install/update |
 
-All four count **at runtime** (first use per version), so every install method
-— marketplace, DMG, curl, local build — is captured uniformly. The Codex App's
+All four current channels count **at runtime** (first use per version), so every install method
+— marketplace, DMG, curl, local build — is captured uniformly. The ChatGPT App
 DMG/binary downloads are *also* counted natively by GitHub on the Release page
 (asset `download_count`), independent of this Worker.
 
@@ -72,7 +74,7 @@ them at its own by editing the `base=` default (or exporting
 `REDPEN_TELEMETRY_URL`):
 
 - `plugins/redpen/hooks/grammar_check.sh` — counts `claude`
-- `plugins/redpen-codex/shared/coach_codex.sh` — counts `codex-cli` / `codex-app`
+- `plugins/redpen-codex/shared/coach_codex.sh` — counts `codex-cli` / `chatgpt-app`
 - `plugins/redpen-coco/hooks/grammar_check.sh` — counts `coco`
 
 Use the **base** URL (no trailing `/hit`); the clients append `/hit?c=<channel>`.
@@ -81,7 +83,7 @@ Use the **base** URL (no trailing `/hit`); the clients append `/hit?c=<channel>`
 
 ```sh
 curl https://redpen-telemetry.<your-subdomain>.workers.dev/stats
-# {"claude":12,"codex-cli":4,"codex-app":31,"coco":2,"total":49}
+# {"claude":12,"codex-cli":4,"chatgpt-app":31,"codex-app":5,"coco":2,"total":54}
 ```
 
 ### README badge
@@ -92,7 +94,8 @@ Shields.io can render a live total from the `/stats` endpoint:
 ![installs](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24.total&label=installs&color=brightgreen)
 ```
 
-`total` = `claude` + `codex-cli` + `codex-app` + `coco` (the Worker sums the
+`total` = `claude` + `codex-cli` + `chatgpt-app` + legacy `codex-app` + `coco`
+(the Worker sums the
 channel counters in `/stats`). Each counter rises by 1 per machine per version
 on first use, so `total` is a cumulative count of install/update events across
 all channels — not unique humans.

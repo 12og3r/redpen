@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Package the "Red Pen(Codex)" wrapper .app into a styled drag-to-Applications
+# Package the "Red Pen(ChatGPT)" wrapper .app into a styled drag-to-Applications
 # .dmg: a manuscript-themed background (cream paper, red pen arrow), hidden
 # toolbar, large icons, and the app + Applications laid out for drag-install.
 #
@@ -13,7 +13,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OUT="$HERE/build"
-APP="$OUT/Red Pen(Codex).app"
+APP="$OUT/Red Pen(ChatGPT).app"
 DMG="$OUT/Red Pen.dmg"
 VOL="Red Pen"
 

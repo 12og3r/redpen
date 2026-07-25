@@ -2,7 +2,7 @@
 # UserPromptSubmit hook for Codex CLI.
 #
 # Keep this entrypoint thin so the Codex CLI plugin and the experimental
-# Codex App launcher share the same coach implementation. The runner emits
+# ChatGPT App launcher shares the same coach implementation. The runner emits
 # Codex's normal {"systemMessage": ...} hook JSON unless REDPEN_OUTPUT is
 # set by another host.
 

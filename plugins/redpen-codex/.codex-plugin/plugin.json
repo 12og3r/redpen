@@ -1,17 +1,31 @@
 {
   "name": "redpen-codex",
-  "description": "Scores and rewrites every user prompt in your chosen target language (English, Chinese, Spanish, or Japanese) via a UserPromptSubmit hook. Codex CLI port of redpen. Feedback is shown to you only, not added to the model's context.",
-  "version": "0.3.2",
+  "description": "A private language coach for ChatGPT desktop and Codex that scores prompts, highlights corrections, and suggests native phrasing without changing the original prompt.",
+  "version": "0.4.1",
   "author": {
-    "name": "roger.kwan"
+    "name": "roger.kwan",
+    "url": "https://github.com/12og3r"
   },
-  "keywords": ["language", "learning", "english", "chinese", "spanish", "japanese", "hooks", "codex"],
+  "homepage": "https://github.com/12og3r/redpen#readme",
+  "repository": "https://github.com/12og3r/redpen",
+  "license": "MIT",
+  "keywords": ["language", "learning", "english", "chinese", "spanish", "japanese", "chatgpt", "codex"],
+  "skills": "./skills/",
   "interface": {
+    "displayName": "redpen",
+    "shortDescription": "Private, passive language coaching while you work",
+    "longDescription": "Scores your phrasing, highlights corrections, and offers a native-style alternative in English, Chinese, Spanish, or Japanese. The ChatGPT desktop launcher and Codex hook keep the original prompt unchanged and show feedback only to you.",
+    "developerName": "roger.kwan",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://github.com/12og3r/redpen",
+    "defaultPrompt": [
+      "Set redpen to coach my English with native-style hints.",
+      "Switch redpen coaching to Chinese.",
+      "Turn off redpen native-style hints."
+    ],
+    "brandColor": "#D92D43",
     "composerIcon": "./assets/icon.png",
     "logo": "./assets/icon.png"
-  },
-  "paths": {
-    "hooks": "./hooks/hooks.json",
-    "skills": "./skills"
   }
 }

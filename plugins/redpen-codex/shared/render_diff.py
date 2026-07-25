@@ -164,8 +164,14 @@ if m:
             hint = body[m_div2.end():]
             body = ""
     if os.environ.get("REDPEN_OUTPUT", "").strip().lower() == "structured":
+        mode = (
+            "translation" if score == 0
+            else "unchanged" if score >= 100
+            else "correction"
+        )
         print(json.dumps({
             "status": "ok",
+            "mode": mode,
             "score": score,
             "language": language,
             "rewrite": body.rstrip(),

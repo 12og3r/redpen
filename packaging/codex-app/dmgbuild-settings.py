@@ -6,7 +6,7 @@ import os
 def _i(k):
     return int(os.environ[k])
 
-app = os.environ["APP"]              # path to "Red Pen(Codex).app"
+app = os.environ["APP"]              # path to "Red Pen(ChatGPT).app"
 background = os.environ["BG"]        # path to background.tiff
 app_name = os.path.basename(app)     # name shown in the volume
 

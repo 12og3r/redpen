@@ -1,14 +1,16 @@
 {
   "name": "redpen",
+  "interface": {
+    "displayName": "redpen"
+  },
   "version": "1.0.0",
-  "description": "Personal language-learning helper for Codex CLI (English / Chinese / Spanish / Japanese).",
+  "description": "Private language coaching for ChatGPT desktop and Codex (English / Chinese / Spanish / Japanese).",
   "owner": {
     "name": "roger.kwan"
   },
   "plugins": [
     {
       "name": "redpen-codex",
-      "description": "Per-prompt score + rewrite in your chosen target language. Codex CLI port of redpen. Output via systemMessage (visible to you, not added to the model's context).",
       "source": {
         "source": "local",
         "path": "./plugins/redpen-codex"
@@ -17,7 +19,7 @@
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
-      "category": "productivity"
+      "category": "Productivity"
     }
   ]
 }

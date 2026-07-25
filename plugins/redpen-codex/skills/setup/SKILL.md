@@ -1,6 +1,6 @@
 ---
 name: redpen-setup
-description: Configure the redpen-codex plugin (language + native-style hint). Invoke when the user wants to change which language they are practising or whether the native-style hint shows. Writes ~/.codex/redpen.config.
+description: Configure redpen for the ChatGPT desktop launcher and Codex (language + native-style hint). Invoke when the user wants to change which language they are practising or whether the native-style hint shows. Writes ~/.codex/redpen.config.
 allowed-tools: Read, Write
 ---
 
@@ -75,7 +75,7 @@ Use the Write tool to overwrite `~/.codex/redpen.config` with EXACTLY this
 content (substitute the chosen values):
 
 ```
-# redpen-codex plugin config — sourced by the UserPromptSubmit hook.
+# redpen config — shared by the ChatGPT desktop launcher and Codex hook.
 #
 # Supported LANGUAGE values:
 #   english | chinese | spanish | japanese

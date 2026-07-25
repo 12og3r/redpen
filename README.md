@@ -2,7 +2,7 @@
 
 [![installs](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24.total&label=installs&color=brightgreen)](#telemetry--privacy)
 [![Claude Code](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24.claude&label=Claude%20Code&color=blue)](#telemetry--privacy)
-[![Codex](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24.codex&label=Codex&color=blue)](#telemetry--privacy)
+[![OpenAI](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24.codex&label=OpenAI&color=blue)](#telemetry--privacy)
 [![coco](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fredpen-telemetry.redpen.workers.dev%2Fstats&query=%24.coco&label=coco&color=blue)](#telemetry--privacy)
 
 A personal agent CLI plugin that **marks up every prompt you type** like
@@ -12,16 +12,16 @@ in your chosen target language. Designed for developers who want passive
 writing practice while doing their day job at the terminal.
 
 Currently supports two agent CLIs as separate but feature-parallel plugins,
-plus an experimental launcher for Codex App:
+plus a desktop launcher for the unified ChatGPT App:
 
 - **Claude Code** — install [`redpen`](#install-claude-code)
 - **OpenAI Codex CLI** — install [`redpen-codex`](#install-codex-cli)
-- **Codex App** — run the lightweight launcher in
-  [Codex App experimental launcher](#codex-app-experimental-launcher)
+- **ChatGPT App** — run the lightweight launcher in
+  [ChatGPT App launcher](#chatgpt-app-launcher)
 
 The two CLI plugins share the same architecture (UserPromptSubmit hook +
 `systemMessage` emit), scoring rubric, target languages, and shared
-`render_diff.py`. The Codex App launcher reuses the Codex runner but renders
+`render_diff.py`. The ChatGPT App launcher reuses the Codex runner but renders
 feedback in the app DOM instead of a CLI hook channel. Your original prompt
 always reaches the model unchanged — the feedback is shown to you only, never
 added to the model's context. redpen is a **coach**, not a rewriter: the goal
@@ -117,28 +117,28 @@ codex plugin add redpen-codex@redpen
 should see a `[NN] <rewrite>  →  <native-style>` line. No setup
 required.
 
-## Codex App experimental launcher
+## ChatGPT App launcher
 
-This path does not modify `Codex.app` or unpack `app.asar`. It launches a
-fresh Codex App process with Chrome DevTools remote debugging enabled, injects
+This path does not modify `ChatGPT.app` or unpack `app.asar`. It launches a
+fresh ChatGPT process with Chrome DevTools remote debugging enabled, injects
 a small renderer script through CDP, and handles redpen checks through a
 `Runtime.addBinding` bridge back to this launcher.
 
 ```sh
-# Quit Codex App first, then run:
+# Quit ChatGPT first, then run from source:
 cargo run -p redpen-codex-app -- launch
 ```
 
 For a released build, install the launcher with:
 
 ```sh
-curl -fsSL https://github.com/12og3r/redpen/releases/latest/download/install-codex-app.sh | sh
+curl -fsSL https://github.com/12og3r/redpen/releases/latest/download/install-chatgpt-app.sh | sh
 ```
 
-Or download `redpen-codex-app-macos-universal` from the GitHub release page,
+Or download `redpen-chatgpt-app-macos-universal` from the GitHub release page,
 make it executable, and place it anywhere on your `PATH`.
 
-The launcher reuses the Codex config at `~/.codex/redpen.config` and the same
+The launcher reuses the OpenAI plugin config at `~/.codex/redpen.config` and the same
 `codex exec` runner as `redpen-codex`. Feedback appears asynchronously under
 the just-submitted user message. Your original prompt is not changed, and the
 feedback is not sent back into the conversation context.
@@ -147,19 +147,23 @@ Useful flags:
 
 ```sh
 cargo run -p redpen-codex-app -- launch \
-  --codex-app /Applications/Codex.app \
+  --chatgpt-app /Applications/ChatGPT.app \
   --debug-port 9229
 ```
 
-If Codex App is already running, the launcher exits with an instruction to
+If ChatGPT is already running, the launcher exits with an instruction to
 quit it first. This is intentional: an already-running Electron process may
 ignore new remote-debugging arguments.
 
 Release builds are single-file executables. The binary embeds the redpen
 coach scripts and expands them under
-`~/Library/Application Support/redpen-codex-app/runtime/<version>/` on first
+`~/Library/Application Support/redpen-chatgpt-app/runtime/<version>/` on first
 run. Set `REDPEN_COACH_SCRIPT` or pass `--coach-script` only when debugging a
 local script override.
+
+The launcher defaults to `/Applications/ChatGPT.app`. Older Codex desktop
+installs are still supported as a fallback, and `--codex-app` remains an alias
+for `--chatgpt-app`.
 
 ## Configure (Claude Code)
 
@@ -422,9 +426,9 @@ Key design choices:
 ## Telemetry & privacy
 
 redpen counts **anonymous installs across all four channels** (Claude Code
-plugin, Codex CLI plugin, Codex App, coco/Trae CLI plugin) so we have a rough
+plugin, Codex CLI plugin, ChatGPT App, coco/Trae CLI plugin) so we have a rough
 sense of usage. The only thing ever sent is a fixed channel label (`claude` /
-`codex-cli` / `codex-app` / `coco`) — **no prompt text, no IP** (the counting
+`codex-cli` / `chatgpt-app` / `coco`) — **no prompt text, no IP** (the counting
 Worker never reads it),
 **no machine id, no user data of any kind.** Each client fires the ping **once
 per installed version** (a local marker file stores the version), so the
@@ -441,7 +445,7 @@ The counter is a ~40-line Cloudflare Worker that stores only integers; its full
 privacy contract, deploy steps, and the live `/stats` endpoint are documented
 in [`telemetry/README.md`](telemetry/README.md). The client pings are no-ops
 until you deploy your own Worker and fill in its URL (the repo ships with a
-placeholder). The Codex App is additionally counted natively by GitHub's
+placeholder). The ChatGPT App launcher is additionally counted natively by GitHub's
 Release asset download stats.
 
 ## Files
@@ -455,7 +459,7 @@ redpen/
 │   ├── wrangler.toml
 │   └── README.md                            ← deploy + privacy contract
 ├── .claude-plugin/marketplace.json          ← Claude Code marketplace entry
-├── .agents/plugins/marketplace.json         ← Codex CLI marketplace entry
+├── .agents/plugins/marketplace.json         ← ChatGPT + Codex marketplace entry
 ├── plugins/redpen/                          ← Claude Code plugin
 │   ├── .claude-plugin/plugin.json
 │   ├── commands/setup.md                    ← /redpen:setup
@@ -463,10 +467,10 @@ redpen/
 │   └── hooks/
 │       ├── hooks.json                       ← UserPromptSubmit registration
 │       └── grammar_check.sh                 ← the hook itself
-├── plugins/redpen-codex/                    ← Codex CLI plugin
+├── plugins/redpen-codex/                    ← ChatGPT + Codex plugin (stable package ID)
 │   ├── .codex-plugin/plugin.json
 │   ├── skills/setup/SKILL.md                ← $redpen-setup
-│   ├── shared/                              ← own copy (also embedded in redpen-codex-app)
+│   ├── shared/                              ← own copy (also embedded in the ChatGPT launcher)
 │   └── hooks/
 │       ├── hooks.json
 │       └── grammar_check.sh

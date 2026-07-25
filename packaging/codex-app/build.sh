@@ -6,19 +6,19 @@
 # An AppleScript applet is used (rather than a shell-script CFBundleExecutable)
 # because it has a real Mach-O stub and launches reliably via LaunchServices /
 # double-click. It starts the launcher detached, then exits; the launcher lives
-# until Codex App quits.
+# until ChatGPT quits.
 #
-# Output: packaging/codex-app/build/Red Pen(Codex).app
+# Output: packaging/codex-app/build/Red Pen(ChatGPT).app
 # Env overrides:
-#   BIN          prebuilt redpen-codex-app binary to embed (CI passes the
+#   BIN          prebuilt redpen-chatgpt-app binary to embed (CI passes the
 #                universal binary; otherwise the binary is built with cargo)
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 OUT="$HERE/build"
-APP="$OUT/Red Pen(Codex).app"
-VERSION="0.3.2"
+APP="$OUT/Red Pen(ChatGPT).app"
+VERSION="0.4.1"
 BUNDLE_ID="org.redpen.app"
 PB=/usr/libexec/PlistBuddy
 
@@ -28,7 +28,7 @@ done
 
 ICON_PNG="$HERE/assets/app-icon-1024.png"
 if [ ! -f "$ICON_PNG" ]; then
-  echo "==> committed icon missing, regenerating (requires Codex.app)"
+  echo "==> committed icon missing, regenerating"
   bash "$HERE/make-icon.sh"
 fi
 
@@ -56,8 +56,8 @@ osacompile -o "$APP" "$HERE/wrapper.applescript"
 
 echo "==> embedding binary + icon + metadata"
 mkdir -p "$APP/Contents/Resources/bin"
-cp "$BIN" "$APP/Contents/Resources/bin/redpen-codex-app"
-chmod +x "$APP/Contents/Resources/bin/redpen-codex-app"
+cp "$BIN" "$APP/Contents/Resources/bin/redpen-chatgpt-app"
+chmod +x "$APP/Contents/Resources/bin/redpen-chatgpt-app"
 # Use a uniquely-named icon (not osacompile's default applet.icns) so the icon
 # isn't confused with the generic applet icon in icon caches.
 rm -f "$APP/Contents/Resources/applet.icns"
@@ -73,8 +73,8 @@ PLIST="$APP/Contents/Info.plist"
 # CFBundleIconFile and would point back at the generic applet icon.
 $PB -c "Delete :CFBundleIconName" "$PLIST" 2>/dev/null || true
 $PB -c "Set :CFBundleIconFile AppIcon" "$PLIST"
-$PB -c "Set :CFBundleName Red Pen(Codex)" "$PLIST"
-$PB -c "Add :CFBundleDisplayName string Red Pen(Codex)" "$PLIST" 2>/dev/null || $PB -c "Set :CFBundleDisplayName Red Pen(Codex)" "$PLIST"
+$PB -c "Set :CFBundleName Red Pen(ChatGPT)" "$PLIST"
+$PB -c "Add :CFBundleDisplayName string Red Pen(ChatGPT)" "$PLIST" 2>/dev/null || $PB -c "Set :CFBundleDisplayName Red Pen(ChatGPT)" "$PLIST"
 $PB -c "Add :CFBundleIdentifier string $BUNDLE_ID" "$PLIST" 2>/dev/null || $PB -c "Set :CFBundleIdentifier $BUNDLE_ID" "$PLIST"
 $PB -c "Add :CFBundleShortVersionString string $VERSION" "$PLIST" 2>/dev/null || $PB -c "Set :CFBundleShortVersionString $VERSION" "$PLIST"
 $PB -c "Add :CFBundleVersion string $VERSION" "$PLIST" 2>/dev/null || $PB -c "Set :CFBundleVersion $VERSION" "$PLIST"

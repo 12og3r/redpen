@@ -5,6 +5,33 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-07-25
+
+### Changed
+
+- **ChatGPT feedback now reads like an inline editorial note.** Translation,
+  correction, and unchanged prompts have distinct labels; native phrasing is
+  progressively disclosed; and the UI inherits the host theme with responsive,
+  keyboard-accessible controls.
+
+### Fixed
+
+- **Desktop coaching no longer silently disappears when a global Codex CLI is
+  broken.** The ChatGPT launcher prefers the app-bundled Codex executable, and
+  the shared runner records subprocess failures in the redpen log.
+
+## [0.4.0] - 2026-07-25
+
+### Changed
+
+- **ChatGPT desktop is now the default OpenAI app host.** The redpen launcher
+  starts `/Applications/ChatGPT.app`, injects feedback into the unified
+  ChatGPT desktop experience, and ships as **Red Pen(ChatGPT)**. The legacy
+  Codex app path and `--codex-app` flag remain supported for compatibility.
+- **Universal plugin metadata.** The OpenAI plugin now presents as `redpen` in
+  the shared ChatGPT and Codex plugin directory while retaining its stable
+  `redpen-codex` package ID for existing installations.
+
 ## [0.3.2] - 2026-06-11
 
 ### Added
@@ -36,5 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`arm64` + `x86_64`) binary. The styled `.dmg` is built in CI with `dmgbuild`,
   so it generates reliably on headless macOS runners.
 
+[0.4.1]: https://github.com/12og3r/redpen/releases/tag/v0.4.1
+[0.4.0]: https://github.com/12og3r/redpen/releases/tag/v0.4.0
 [0.3.2]: https://github.com/12og3r/redpen/releases/tag/v0.3.2
 [0.3.1]: https://github.com/12og3r/redpen/releases/tag/v0.3.1

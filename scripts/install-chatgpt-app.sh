@@ -42,7 +42,5 @@ mv "$binary_path" "$install_dir/redpen-chatgpt-app"
 echo "Installed redpen-chatgpt-app to $install_dir/redpen-chatgpt-app"
 echo "Run: redpen-chatgpt-app launch"
 
-# Note: the chatgpt-app channel is counted at runtime (first launch per version)
-# by the embedded coach, not here — that way every install method is captured
-# (DMG, curl, manual). See plugins/redpen-codex/shared/coach_codex.sh.
-# GitHub's Release asset download_count also counts curl/manual downloads.
+# The chatgpt-app channel is counted at runtime (first launch per version) by
+# the embedded coach so DMG, curl, and manual installs are captured uniformly.
