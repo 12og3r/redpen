@@ -57,10 +57,6 @@ jobs:
             target/x86_64-apple-darwin/release/redpen-codex-app \
             -output dist/redpen-chatgpt-app-macos-universal
           chmod +x dist/redpen-chatgpt-app-macos-universal
-          # Checksum that install-chatgpt-app.sh verifies with `shasum -c`.
-          # Generated from inside dist/ so the file lists a bare filename.
-          ( cd dist && shasum -a 256 redpen-chatgpt-app-macos-universal \
-              > redpen-chatgpt-app-macos-universal.sha256 )
 
       - name: Install dmgbuild
         run: |
@@ -86,20 +82,10 @@ jobs:
           RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
           set -eu
-          # All assets the install paths need:
-          #   RedPen.dmg                         - manual drag-install
-          #   redpen-chatgpt-app-macos-universal - binary the curl installer fetches
-          #   ...sha256                          - checksum the installer verifies
-          #   install-chatgpt-app.sh             - the curl installer itself
-          assets="dist/RedPen.dmg \
-            dist/redpen-chatgpt-app-macos-universal \
-            dist/redpen-chatgpt-app-macos-universal.sha256 \
-            scripts/install-chatgpt-app.sh \
-            scripts/install-codex-app.sh"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" $assets --clobber
+            gh release upload "$RELEASE_TAG" dist/RedPen.dmg --clobber
           else
-            gh release create "$RELEASE_TAG" $assets \
+            gh release create "$RELEASE_TAG" dist/RedPen.dmg \
               --target "$GITHUB_SHA" \
               --title "$RELEASE_TAG" \
               --generate-notes

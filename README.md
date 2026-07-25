@@ -129,14 +129,9 @@ a small renderer script through CDP, and handles redpen checks through a
 cargo run -p redpen-codex-app -- launch
 ```
 
-For a released build, install the launcher with:
-
-```sh
-curl -fsSL https://github.com/12og3r/redpen/releases/latest/download/install-chatgpt-app.sh | sh
-```
-
-Or download `redpen-chatgpt-app-macos-universal` from the GitHub release page,
-make it executable, and place it anywhere on your `PATH`.
+For a released build, download
+[**RedPen.dmg**](https://github.com/12og3r/redpen/releases/latest/download/RedPen.dmg),
+open it, and drag **Red Pen(ChatGPT)** to **Applications**.
 
 The launcher reuses the OpenAI plugin config at `~/.codex/redpen.config` and the same
 `codex exec` runner as `redpen-codex`. Feedback appears asynchronously under
