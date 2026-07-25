@@ -6,27 +6,19 @@
 -- remote debugging and injects the renderer over CDP. The launcher is
 -- started detached so it outlives this app (it lives until ChatGPT quits).
 --
--- Before launching it: requires ChatGPT desktop + the codex CLI (blocks with a
--- dialog if either is missing), and installs the redpen-codex plugin if absent
--- (showing a progress bar).
+-- Before launching it: requires ChatGPT desktop and a working Codex runtime,
+-- preferring the one bundled with ChatGPT over a global CLI. It installs the
+-- redpen-codex plugin if absent (showing a progress bar).
 
 -- LaunchServices gives a minimal PATH, so Homebrew/local bins must be added
 -- explicitly or `codex` will not be found.
 property shellPath : "/opt/homebrew/bin:/usr/local/bin:" & "/usr/bin:/bin:/usr/sbin:/sbin"
 property repoMarketplace : "12og3r/redpen"
+property bundledCodexPath : "/Applications/ChatGPT.app/Contents/Resources/codex"
 
 on runShell(commandText)
 	return do shell script ("export PATH=" & (quoted form of shellPath) & "; " & commandText)
 end runShell
-
-on which(tool)
-	try
-		my runShell("command -v " & tool)
-		return true
-	on error
-		return false
-	end try
-end which
 
 on run
 	set meDir to POSIX path of (path to me)
@@ -40,18 +32,28 @@ on run
 		return
 	end try
 
-	-- 2. Require the codex CLI.
-	if not (my which("codex")) then
-		display dialog "The Codex CLI isn't installed." & return & return & "Install it (for example: brew install codex), then open Red Pen again." buttons {"OK"} default button "OK" with title "Red Pen" with icon stop
-		return
-	end if
+	-- 2. Prefer ChatGPT's bundled Codex runtime. A global Homebrew/npm Codex
+	-- can exist on PATH but still fail at startup because its Node runtime is
+	-- broken, so verify that each candidate can actually execute.
+	set codexCommand to quoted form of bundledCodexPath
+	try
+		my runShell("test -x " & codexCommand & " && " & codexCommand & " --version >/dev/null 2>&1")
+	on error
+		set codexCommand to "codex"
+		try
+			my runShell("command -v codex >/dev/null 2>&1 && codex --version >/dev/null 2>&1")
+		on error
+			display dialog "No working Codex runtime was found." & return & return & "Update or reinstall ChatGPT, then open Red Pen again." buttons {"OK"} default button "OK" with title "Red Pen" with icon stop
+			return
+		end try
+	end try
 
 	-- 3. Ensure the redpen-codex plugin is installed.
 	-- `codex plugin list` lists redpen-codex even when "not installed", so
 	-- check the status column rather than mere presence.
 	set pluginInstalled to false
 	try
-		if (my runShell("codex plugin list 2>/dev/null | grep 'redpen-codex' | grep -v 'not installed' | grep -q 'installed' && echo yes || echo no")) is "yes" then set pluginInstalled to true
+		if (my runShell(codexCommand & " plugin list 2>/dev/null | grep 'redpen-codex' | grep -v 'not installed' | grep -q 'installed' && echo yes || echo no")) is "yes" then set pluginInstalled to true
 	end try
 
 	if not pluginInstalled then
@@ -66,7 +68,7 @@ on run
 
 		-- Real install happens here (fake bar pauses, then finishes).
 		try
-			my runShell("codex plugin marketplace add " & repoMarketplace & " >/dev/null 2>&1 || true; codex plugin add redpen-codex@redpen >/dev/null 2>&1 || true")
+			my runShell(codexCommand & " plugin marketplace add " & repoMarketplace & " >/dev/null 2>&1 || true; " & codexCommand & " plugin add redpen-codex@redpen >/dev/null 2>&1 || true")
 		end try
 
 		repeat with i from 36 to 100
@@ -78,7 +80,7 @@ on run
 		-- Verify it actually installed; if not, block rather than launch broken.
 		set ok to false
 		try
-			if (my runShell("codex plugin list 2>/dev/null | grep 'redpen-codex' | grep -v 'not installed' | grep -q 'installed' && echo yes || echo no")) is "yes" then set ok to true
+			if (my runShell(codexCommand & " plugin list 2>/dev/null | grep 'redpen-codex' | grep -v 'not installed' | grep -q 'installed' && echo yes || echo no")) is "yes" then set ok to true
 		end try
 		if not ok then
 			display dialog "Couldn't install the redpen-codex plugin automatically." & return & return & "Try manually:" & return & "  codex plugin marketplace add " & repoMarketplace & return & "  codex plugin add redpen-codex@redpen" buttons {"OK"} default button "OK" with title "Red Pen" with icon stop

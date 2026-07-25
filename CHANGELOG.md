@@ -16,9 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Desktop coaching no longer silently disappears when a global Codex CLI is
-  broken.** The ChatGPT launcher prefers the app-bundled Codex executable, and
-  the shared runner records subprocess failures in the redpen log.
+- **A broken global Codex CLI no longer blocks setup or silently hides desktop
+  coaching.** Both the DMG setup check and ChatGPT launcher prefer the
+  app-bundled Codex executable, and the shared runner records subprocess
+  failures in the redpen log.
 
 ## [0.4.0] - 2026-07-25
 
