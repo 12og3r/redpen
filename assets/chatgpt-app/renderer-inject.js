@@ -1,5 +1,5 @@
 if (window.__REDPEN_CHATGPT_APP_RENDERER__) return;
-window.__REDPEN_CHATGPT_APP_RENDERER__ = { version: "0.4.1" };
+window.__REDPEN_CHATGPT_APP_RENDERER__ = { version: "0.4.3" };
 
 const bridge = window.__REDPEN_CHATGPT_APP__;
 const pending = [];
@@ -586,9 +586,12 @@ async function runRedpen(item, block) {
       requestId: item.id,
     });
     clearTimeout(loadingTimer);
-    if (!block.isConnected) return;
     if (!response || response.status === "skipped") {
       block.remove();
+      return;
+    }
+    if (!block.isConnected) {
+      requeueDetachedItem(item, block);
       return;
     }
     if (response.status !== "ok") {
@@ -597,9 +600,26 @@ async function runRedpen(item, block) {
     renderFeedbackBlock(response, block);
   } catch (error) {
     clearTimeout(loadingTimer);
-    if (!block.isConnected) return;
+    if (!block.isConnected) {
+      requeueDetachedItem(item, block);
+      return;
+    }
     renderErrorBlock(block, error, () => runRedpen(item, block));
   }
+}
+
+function requeueDetachedItem(item, block) {
+  // Editing and resending a message replaces the conversation branch in the
+  // desktop app. The first scan can see the transient user bubble just before
+  // React replaces it, so keep the submission alive and attach it again once
+  // the replacement bubble has settled.
+  const domKey = block.dataset.domKey;
+  if (domKey) seenDomKeys.delete(domKey);
+  if (!pending.some((candidate) => candidate.id === item.id)) {
+    item.at = Date.now();
+    pending.unshift(item);
+  }
+  scheduleScan();
 }
 
 function renderLoadingBlock(block) {
