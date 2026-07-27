@@ -1,9 +1,19 @@
 if (window.__REDPEN_CHATGPT_APP_RENDERER__) return;
-window.__REDPEN_CHATGPT_APP_RENDERER__ = { version: "0.4.3" };
+window.__REDPEN_CHATGPT_APP_RENDERER__ = { version: "0.4.4" };
 
 const bridge = window.__REDPEN_CHATGPT_APP__;
 const pending = [];
 const seenDomKeys = new Set();
+const MAX_CACHED_FEEDBACK = 200;
+const FEEDBACK_STORAGE_KEY = "redpen.chatgpt-app.feedback.v1";
+const persistedFeedbackState = loadPersistedFeedbackState();
+const feedbackByDomKey = new Map(persistedFeedbackState.feedback);
+const inFlightByDomKey = new Map();
+const retryableByDomKey = new Map([
+  ...persistedFeedbackState.retryable,
+  ...persistedFeedbackState.inFlight,
+]);
+const dismissedDomKeys = new Set(persistedFeedbackState.dismissed);
 let sequence = 0;
 let scanTimer = 0;
 
@@ -26,6 +36,7 @@ function startWhenReady() {
     subtree: true,
   });
   setInterval(prunePending, 5000);
+  scheduleScan();
 }
 
 function installStyles() {
@@ -456,16 +467,11 @@ function scheduleScan() {
 
 function scanForSubmittedMessages() {
   prunePending();
+  const entries = userBubbleEntries();
+  restoreFeedback(entries);
   if (!pending.length) return;
 
-  const counts = new Map();
-  for (const bubble of userBubbles()) {
-    const text = bubbleText(bubble);
-    if (!text) continue;
-
-    const occurrence = (counts.get(text) || 0) + 1;
-    counts.set(text, occurrence);
-    const domKey = `${location.pathname}|${hashText(text)}|${occurrence}`;
+  for (const { bubble, text, domKey } of entries) {
     if (seenDomKeys.has(domKey) || hasFeedbackForDomKey(bubble, domKey)) {
       continue;
     }
@@ -482,6 +488,150 @@ function scanForSubmittedMessages() {
     block.dataset.domKey = domKey;
     attachFeedbackBlock(bubble, block);
     runRedpen(item, block);
+  }
+}
+
+function userBubbleEntries() {
+  const counts = new Map();
+  const entries = [];
+  for (const bubble of userBubbles()) {
+    const text = bubbleText(bubble);
+    if (!text) continue;
+    const occurrence = (counts.get(text) || 0) + 1;
+    counts.set(text, occurrence);
+    entries.push({
+      bubble,
+      text,
+      domKey: `${conversationKey()}|${hashText(text)}|${occurrence}`,
+    });
+  }
+  return entries;
+}
+
+function conversationKey() {
+  const activeThread = document.querySelector(
+    '[data-app-action-sidebar-thread-active="true"][data-app-action-sidebar-thread-id]',
+  );
+  const threadId = activeThread?.getAttribute(
+    "data-app-action-sidebar-thread-id",
+  );
+  return threadId || `${location.pathname}${location.search}${location.hash}`;
+}
+
+function restoreFeedback(entries) {
+  for (const { bubble, domKey } of entries) {
+    const response = feedbackByDomKey.get(domKey);
+    if (
+      dismissedDomKeys.has(domKey) ||
+      hasFeedbackForDomKey(bubble, domKey)
+    ) {
+      continue;
+    }
+    const inFlight = inFlightByDomKey.has(domKey);
+    const retryableItem = retryableByDomKey.get(domKey);
+    if (!response && !inFlight && !retryableItem) continue;
+
+    const block = baseBlock();
+    block.dataset.domKey = domKey;
+    if (response) {
+      renderFeedbackBlock(response, block);
+    } else if (retryableItem) {
+      renderErrorBlock(
+        block,
+        new Error("Analysis was interrupted when the application closed."),
+        () => runRedpen(retryableItem, block),
+        "Analysis interrupted",
+      );
+    } else {
+      renderLoadingBlock(block);
+    }
+    attachFeedbackBlock(bubble, block);
+    seenDomKeys.add(domKey);
+  }
+}
+
+function rememberFeedback(domKey, response) {
+  if (!domKey) return;
+  feedbackByDomKey.delete(domKey);
+  feedbackByDomKey.set(domKey, response);
+  while (feedbackByDomKey.size > MAX_CACHED_FEEDBACK) {
+    const oldestKey = feedbackByDomKey.keys().next().value;
+    feedbackByDomKey.delete(oldestKey);
+    dismissedDomKeys.delete(oldestKey);
+  }
+  persistFeedbackState();
+}
+
+function loadPersistedFeedbackState() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(FEEDBACK_STORAGE_KEY) || "{}");
+    const feedback = Array.isArray(parsed.feedback)
+      ? parsed.feedback
+          .filter(
+            (entry) =>
+              Array.isArray(entry) &&
+              entry.length === 2 &&
+              typeof entry[0] === "string" &&
+              entry[1] &&
+              typeof entry[1] === "object",
+          )
+          .slice(-MAX_CACHED_FEEDBACK)
+      : [];
+    const retryable = loadPersistedRequests(parsed.retryable);
+    const inFlight = loadPersistedRequests(parsed.inFlight);
+    const persistedKeys = new Set([
+      ...feedback.map(([domKey]) => domKey),
+      ...retryable.map(([domKey]) => domKey),
+      ...inFlight.map(([domKey]) => domKey),
+    ]);
+    const dismissed = Array.isArray(parsed.dismissed)
+      ? parsed.dismissed.filter(
+          (domKey) => typeof domKey === "string" && persistedKeys.has(domKey),
+        )
+      : [];
+    return { feedback, dismissed, retryable, inFlight };
+  } catch (_error) {
+    return { feedback: [], dismissed: [], retryable: [], inFlight: [] };
+  }
+}
+
+function loadPersistedRequests(value) {
+  return Array.isArray(value)
+    ? value.filter(
+        (entry) =>
+          Array.isArray(entry) &&
+          entry.length === 2 &&
+          typeof entry[0] === "string" &&
+          entry[1] &&
+          typeof entry[1] === "object" &&
+          typeof entry[1].coachPrompt === "string",
+      )
+    : [];
+}
+
+function persistFeedbackState() {
+  try {
+    const dismissed = Array.from(dismissedDomKeys).filter(
+      (domKey) =>
+        feedbackByDomKey.has(domKey) ||
+        retryableByDomKey.has(domKey) ||
+        inFlightByDomKey.has(domKey),
+    );
+    localStorage.setItem(
+      FEEDBACK_STORAGE_KEY,
+      JSON.stringify({
+        feedback: Array.from(feedbackByDomKey),
+        dismissed,
+        retryable: Array.from(retryableByDomKey),
+        inFlight: Array.from(inFlightByDomKey, ([domKey, request]) => [
+          domKey,
+          request.item,
+        ]),
+      }),
+    );
+  } catch (_error) {
+    // Persistence is best-effort: feedback must continue to work when storage
+    // is unavailable or the host application's quota is exhausted.
   }
 }
 
@@ -573,8 +723,18 @@ function attachFeedbackBlock(bubble, block) {
 }
 
 async function runRedpen(item, block) {
+  const domKey = block.dataset.domKey;
+  const request = { item };
+  if (domKey) {
+    retryableByDomKey.delete(domKey);
+    inFlightByDomKey.set(domKey, request);
+    dismissedDomKeys.delete(domKey);
+    persistFeedbackState();
+  }
   const loadingTimer = setTimeout(() => {
-    if (block.isConnected) renderLoadingBlock(block);
+    for (const activeBlock of feedbackBlocksForDomKey(domKey, block)) {
+      renderLoadingBlock(activeBlock);
+    }
   }, 250);
 
   try {
@@ -587,25 +747,58 @@ async function runRedpen(item, block) {
     });
     clearTimeout(loadingTimer);
     if (!response || response.status === "skipped") {
-      block.remove();
-      return;
-    }
-    if (!block.isConnected) {
-      requeueDetachedItem(item, block);
+      if (domKey && inFlightByDomKey.get(domKey) === request) {
+        inFlightByDomKey.delete(domKey);
+      }
+      if (domKey) retryableByDomKey.delete(domKey);
+      persistFeedbackState();
+      for (const activeBlock of feedbackBlocksForDomKey(domKey, block)) {
+        activeBlock.remove();
+      }
       return;
     }
     if (response.status !== "ok") {
       throw new Error(response.message || "redpen failed");
     }
-    renderFeedbackBlock(response, block);
+    if (domKey && inFlightByDomKey.get(domKey) === request) {
+      inFlightByDomKey.delete(domKey);
+    }
+    rememberFeedback(domKey, response);
+    const activeBlocks = feedbackBlocksForDomKey(domKey, block);
+    if (!activeBlocks.length) {
+      scheduleScan();
+      return;
+    }
+    for (const activeBlock of activeBlocks) {
+      if (dismissedDomKeys.has(domKey)) {
+        activeBlock.remove();
+      } else {
+        renderFeedbackBlock(response, activeBlock);
+      }
+    }
   } catch (error) {
     clearTimeout(loadingTimer);
-    if (!block.isConnected) {
+    if (domKey && inFlightByDomKey.get(domKey) === request) {
+      inFlightByDomKey.delete(domKey);
+    }
+    if (domKey) retryableByDomKey.set(domKey, item);
+    persistFeedbackState();
+    const activeBlocks = feedbackBlocksForDomKey(domKey, block);
+    if (!activeBlocks.length) {
       requeueDetachedItem(item, block);
       return;
     }
-    renderErrorBlock(block, error, () => runRedpen(item, block));
+    for (const activeBlock of activeBlocks) {
+      renderErrorBlock(activeBlock, error, () => runRedpen(item, activeBlock));
+    }
   }
+}
+
+function feedbackBlocksForDomKey(domKey, fallback) {
+  if (!domKey) return fallback && fallback.isConnected ? [fallback] : [];
+  return Array.from(document.querySelectorAll(".redpen-feedback")).filter(
+    (candidate) => candidate.dataset.domKey === domKey,
+  );
 }
 
 function requeueDetachedItem(item, block) {
@@ -628,7 +821,7 @@ function renderLoadingBlock(block) {
 
   const actions = appendFeedbackHeader(block, "Checking wording…");
   actions.appendChild(
-    makeActionButton("Dismiss feedback", "×", () => block.remove()),
+    makeActionButton("Dismiss feedback", "×", () => dismissFeedback(block)),
   );
 
   const placeholder = document.createElement("div");
@@ -643,19 +836,23 @@ function renderLoadingBlock(block) {
   return block;
 }
 
-function renderErrorBlock(block, error, retry) {
+function renderErrorBlock(
+  block,
+  error,
+  retry,
+  statusText = "Couldn’t check this prompt",
+) {
   prepareBlock(block, "error");
-  const actions = appendFeedbackHeader(block, "Couldn’t check this prompt");
+  const actions = appendFeedbackHeader(block, statusText);
   actions.appendChild(makeTextAction("Retry", retry));
   actions.appendChild(
-    makeActionButton("Dismiss feedback", "×", () => block.remove()),
+    makeActionButton("Dismiss feedback", "×", () => dismissFeedback(block)),
   );
 
   const announcement = document.createElement("span");
   announcement.className = "redpen-sr-only";
   announcement.setAttribute("role", "alert");
-  announcement.textContent =
-    "Redpen couldn’t check this prompt. You can try again.";
+  announcement.textContent = `Redpen: ${statusText}. You can try again.`;
   announcement.title = String(
     error && error.message ? error.message : error || "",
   );
@@ -697,7 +894,7 @@ function renderFeedbackBlock(response, block = baseBlock()) {
   }
 
   actions.appendChild(
-    makeActionButton("Dismiss feedback", "×", () => block.remove()),
+    makeActionButton("Dismiss feedback", "×", () => dismissFeedback(block)),
   );
 
   if (mode !== "unchanged") {
@@ -719,6 +916,15 @@ function baseBlock() {
   block.setAttribute("aria-live", "polite");
   block.setAttribute("aria-atomic", "false");
   return block;
+}
+
+function dismissFeedback(block) {
+  const domKey = block.dataset.domKey;
+  if (domKey) {
+    dismissedDomKeys.add(domKey);
+    persistFeedbackState();
+  }
+  block.remove();
 }
 
 function prepareBlock(block, stateClasses) {

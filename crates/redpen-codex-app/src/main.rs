@@ -20,7 +20,7 @@ use tokio::{
     io::AsyncWriteExt,
     net::{TcpListener, TcpStream},
     process::Command,
-    time::{sleep, timeout},
+    time::{MissedTickBehavior, interval, sleep, timeout},
 };
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream, connect_async, tungstenite::protocol::Message,
@@ -429,6 +429,13 @@ fn choose_target(targets: Vec<DebugTarget>) -> Option<DebugTarget> {
     match preferred {
         Some(idx) => Some(pages.remove(idx)),
         None => {
+            let main_app = pages.iter().position(|target| {
+                target.url.as_deref().unwrap_or("").to_ascii_lowercase() == "app://-/index.html"
+            });
+            if let Some(idx) = main_app {
+                return Some(pages.remove(idx));
+            }
+
             let legacy = pages.iter().position(|target| {
                 let title = target.title.as_deref().unwrap_or("").to_ascii_lowercase();
                 let url = target.url.as_deref().unwrap_or("").to_ascii_lowercase();
@@ -574,8 +581,29 @@ impl CdpClient {
         coach_script: PathBuf,
         codex_bin: Option<PathBuf>,
     ) -> Result<()> {
-        while let Some(message) = self.read.next().await {
-            let message = message?;
+        let mut binding_refresh = interval(Duration::from_secs(10));
+        binding_refresh.set_missed_tick_behavior(MissedTickBehavior::Delay);
+
+        loop {
+            let message = tokio::select! {
+                message = self.read.next() => {
+                    let Some(message) = message else {
+                        break;
+                    };
+                    message?
+                }
+                _ = binding_refresh.tick() => {
+                    // Electron can replace the renderer process without replacing
+                    // the page target. Re-registering the binding keeps
+                    // Runtime.bindingCalled events attached to the new runtime.
+                    self.send(
+                        "Runtime.addBinding",
+                        json!({ "name": BINDING_NAME }),
+                    )
+                    .await?;
+                    continue;
+                }
+            };
             if !message.is_text() {
                 continue;
             }
@@ -676,6 +704,22 @@ mod tests {
         .expect("target");
 
         assert_eq!(chosen.websocket_debugger_url.as_deref(), Some("ws://codex"));
+    }
+
+    #[test]
+    fn choose_target_ignores_codex_avatar_overlay() {
+        let chosen = choose_target(vec![
+            target(
+                "page",
+                "Codex",
+                "app://-/index.html?initialRoute=%2Favatar-overlay",
+                Some("ws://overlay"),
+            ),
+            target("page", "Codex", "app://-/index.html", Some("ws://main")),
+        ])
+        .expect("target");
+
+        assert_eq!(chosen.websocket_debugger_url.as_deref(), Some("ws://main"));
     }
 
     #[test]
