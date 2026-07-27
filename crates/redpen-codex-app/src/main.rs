@@ -5,6 +5,7 @@ use std::{
     net::Ipv4Addr,
     path::{Path, PathBuf},
     process::Stdio,
+    sync::Arc,
     time::Duration,
 };
 
@@ -20,6 +21,7 @@ use tokio::{
     io::AsyncWriteExt,
     net::{TcpListener, TcpStream},
     process::Command,
+    sync::{Semaphore, mpsc},
     time::{MissedTickBehavior, interval, sleep, timeout},
 };
 use tokio_tungstenite::{
@@ -583,56 +585,85 @@ impl CdpClient {
     ) -> Result<()> {
         let mut binding_refresh = interval(Duration::from_secs(10));
         binding_refresh.set_missed_tick_behavior(MissedTickBehavior::Delay);
+        let (response_tx, mut response_rx) =
+            mpsc::unbounded_channel::<(String, std::result::Result<Value, String>)>();
+        let coach_slots = Arc::new(Semaphore::new(4));
 
         loop {
-            let message = tokio::select! {
+            tokio::select! {
                 message = self.read.next() => {
                     let Some(message) = message else {
                         break;
                     };
-                    message?
+                    let message = message?;
+                    if !message.is_text() {
+                        continue;
+                    }
+                    let event: Value = serde_json::from_str(message.to_text()?)?;
+                    if event.get("method").and_then(Value::as_str)
+                        != Some("Runtime.bindingCalled")
+                    {
+                        continue;
+                    }
+                    let params = event.get("params").cloned().unwrap_or(Value::Null);
+                    if params.get("name").and_then(Value::as_str) != Some(BINDING_NAME) {
+                        continue;
+                    }
+                    let Some(payload) = params.get("payload").and_then(Value::as_str) else {
+                        continue;
+                    };
+                    let request = match serde_json::from_str::<BridgeRequest>(payload) {
+                        Ok(request) => request,
+                        Err(err) => {
+                            eprintln!("redpen bridge ignored invalid payload: {err}");
+                            continue;
+                        }
+                    };
+
+                    let response_tx = response_tx.clone();
+                    let coach_script = coach_script.clone();
+                    let codex_bin = codex_bin.clone();
+                    let coach_slots = coach_slots.clone();
+                    tokio::spawn(async move {
+                        let permit = coach_slots.acquire_owned().await;
+                        let response = match permit {
+                            Ok(_permit) => {
+                                handle_bridge_request(
+                                    &coach_script,
+                                    codex_bin.as_deref(),
+                                    &request,
+                                )
+                                .await
+                                .map_err(|err| err.to_string())
+                            }
+                            Err(err) => Err(format!("redpen coach queue closed: {err}")),
+                        };
+                        let _ = response_tx.send((request.id, response));
+                    });
                 }
                 _ = binding_refresh.tick() => {
                     // Electron can replace the renderer process without replacing
-                    // the page target. Re-registering the binding keeps
-                    // Runtime.bindingCalled events attached to the new runtime.
+                    // the page target. removeBinding unsubscribes the stale
+                    // runtime agent; addBinding subscribes the current one.
+                    self.send(
+                        "Runtime.removeBinding",
+                        json!({ "name": BINDING_NAME }),
+                    )
+                    .await?;
                     self.send(
                         "Runtime.addBinding",
                         json!({ "name": BINDING_NAME }),
                     )
                     .await?;
-                    continue;
                 }
-            };
-            if !message.is_text() {
-                continue;
-            }
-            let event: Value = serde_json::from_str(message.to_text()?)?;
-            if event.get("method").and_then(Value::as_str) != Some("Runtime.bindingCalled") {
-                continue;
-            }
-            let params = event.get("params").cloned().unwrap_or(Value::Null);
-            if params.get("name").and_then(Value::as_str) != Some(BINDING_NAME) {
-                continue;
-            }
-            let Some(payload) = params.get("payload").and_then(Value::as_str) else {
-                continue;
-            };
-            let request = match serde_json::from_str::<BridgeRequest>(payload) {
-                Ok(request) => request,
-                Err(err) => {
-                    eprintln!("redpen bridge ignored invalid payload: {err}");
-                    continue;
+                Some((request_id, response)) = response_rx.recv() => {
+                    let expression = match response {
+                        Ok(value) => resolve_script(&request_id, &value)?,
+                        Err(err) => reject_script(&request_id, &err)?,
+                    };
+                    self.evaluate_no_wait(expression).await?;
                 }
-            };
-
-            let response =
-                handle_bridge_request(&coach_script, codex_bin.as_deref(), &request).await;
-            let expression = match response {
-                Ok(value) => resolve_script(&request.id, &value)?,
-                Err(err) => reject_script(&request.id, &err.to_string())?,
-            };
-            self.evaluate_no_wait(expression).await?;
+            }
         }
         Ok(())
     }
