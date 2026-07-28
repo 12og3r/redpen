@@ -91,4 +91,21 @@ assert_line_count 3
   exit 1
 }
 
+hook_json="$(
+  REWRITTEN=$'[100] test prompt\n──── Native style ────\ntest prompt' \
+  ORIGINAL_PROMPT='test prompt' \
+  LT_LANGUAGE=english \
+  REDPEN_SINGLE_LINE=1 \
+  /usr/bin/env python3 "$ROOT/plugins/redpen-codex/shared/render_diff.py"
+)"
+HOOK_JSON="$hook_json" /usr/bin/env python3 -c '
+import json
+import os
+
+message = json.loads(os.environ["HOOK_JSON"])["systemMessage"]
+prefix = "\r\x1b[2K"
+assert message.startswith(prefix), repr(message[:20])
+assert message[len(prefix)] != "\n", repr(message[:20])
+'
+
 printf 'coach model fallback tests passed\n'

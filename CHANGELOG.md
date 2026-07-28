@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Codex feedback no longer starts with blank rows.** The hook now clears
+  Codex's `warning:` prefix and writes feedback on that same terminal row
+  instead of inserting an additional leading newline.
 - **Desktop checks no longer remain stuck on a half-alive CDP connection.**
   Redpen now verifies the full binding round trip, reconnects an unhealthy
   session, and replays each request with a stable ID without rerunning the

@@ -333,7 +333,9 @@ if m:
 # Experimental: try to wipe Codex's "warning: " prefix when in single-line
 # (Codex) mode. \r returns to col 0, ESC[2K erases the current line. If
 # Codex's TUI passes these through to the terminal, the prefix gets
-# overwritten. If it filters them, no visible change.
+# overwritten. Keep the content on the cleared row: inserting a newline here
+# leaves the erased warning row blank and compounds the host's own spacing.
+# If Codex filters the control sequence, no visible change.
 single_line_mode = os.environ.get("REDPEN_SINGLE_LINE", "") in ("1", "true", "yes", "on")
 prefix_wipe = "\r\033[2K" if single_line_mode else ""
-print(json.dumps({"systemMessage": prefix_wipe + "\n" + out}, ensure_ascii=False))
+print(json.dumps({"systemMessage": prefix_wipe + out}, ensure_ascii=False))
