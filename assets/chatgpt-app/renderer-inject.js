@@ -3,16 +3,28 @@ window.__REDPEN_CHATGPT_APP_RENDERER__ = { version: "0.4.4" };
 
 const bridge = window.__REDPEN_CHATGPT_APP__;
 const pending = [];
+const recentCaptureAtByText = new Map();
 const seenDomKeys = new Set();
 const MAX_CACHED_FEEDBACK = 200;
+const CAPTURE_DEDUPE_MS = 10000;
 const FEEDBACK_STORAGE_KEY = "redpen.chatgpt-app.feedback.v1";
 const persistedFeedbackState = loadPersistedFeedbackState();
+const sameBridgeInstance = Boolean(
+  bridge?.instanceId &&
+    persistedFeedbackState.bridgeInstanceId === bridge.instanceId,
+);
 const feedbackByDomKey = new Map(persistedFeedbackState.feedback);
 const inFlightByDomKey = new Map();
-const retryableByDomKey = new Map([
-  ...persistedFeedbackState.retryable,
-  ...persistedFeedbackState.inFlight,
-]);
+const resumableByDomKey = new Map(
+  sameBridgeInstance ? persistedFeedbackState.inFlight : [],
+);
+const retryableByDomKey = new Map(
+  sameBridgeInstance
+    ? persistedFeedbackState.retryable
+    : [...persistedFeedbackState.retryable, ...persistedFeedbackState.inFlight].map(
+        ([domKey, item]) => [domKey, withoutTransportId(item)],
+      ),
+);
 const dismissedDomKeys = new Set(persistedFeedbackState.dismissed);
 let sequence = 0;
 let scanTimer = 0;
@@ -399,10 +411,12 @@ function captureSubmit() {
 
   const normalizedRaw = normalizeText(rawPrompt);
   const now = Date.now();
-  const duplicate = pending.some(
-    (item) => item.normalizedRaw === normalizedRaw && now - item.at < 1500,
-  );
-  if (duplicate) return;
+  const lastCaptureAt = recentCaptureAtByText.get(normalizedRaw) || 0;
+  if (now - lastCaptureAt < CAPTURE_DEDUPE_MS) return;
+  recentCaptureAtByText.set(normalizedRaw, now);
+  for (const [text, capturedAt] of recentCaptureAtByText) {
+    if (now - capturedAt > 120000) recentCaptureAtByText.delete(text);
+  }
 
   pending.push({
     id: `${now}-${++sequence}`,
@@ -492,11 +506,25 @@ function scanForSubmittedMessages() {
 }
 
 function userBubbleEntries() {
-  const counts = new Map();
-  const entries = [];
+  const unique = [];
   for (const bubble of userBubbles()) {
     const text = bubbleText(bubble);
     if (!text) continue;
+    const nestedIndex = unique.findIndex(
+      (entry) =>
+        entry.text === text &&
+        (entry.bubble.contains(bubble) || bubble.contains(entry.bubble)),
+    );
+    if (nestedIndex < 0) {
+      unique.push({ bubble, text });
+    } else if (unique[nestedIndex].bubble.contains(bubble)) {
+      unique[nestedIndex] = { bubble, text };
+    }
+  }
+
+  const counts = new Map();
+  const entries = [];
+  for (const { bubble, text } of unique) {
     const occurrence = (counts.get(text) || 0) + 1;
     counts.set(text, occurrence);
     entries.push({
@@ -528,13 +556,16 @@ function restoreFeedback(entries) {
       continue;
     }
     const inFlight = inFlightByDomKey.has(domKey);
+    const resumableItem = resumableByDomKey.get(domKey);
     const retryableItem = retryableByDomKey.get(domKey);
-    if (!response && !inFlight && !retryableItem) continue;
+    if (!response && !inFlight && !resumableItem && !retryableItem) continue;
 
     const block = baseBlock();
     block.dataset.domKey = domKey;
     if (response) {
       renderFeedbackBlock(response, block);
+    } else if (resumableItem) {
+      renderLoadingBlock(block);
     } else if (retryableItem) {
       renderErrorBlock(
         block,
@@ -547,11 +578,15 @@ function restoreFeedback(entries) {
     }
     attachFeedbackBlock(bubble, block);
     seenDomKeys.add(domKey);
+    if (resumableItem) {
+      resumableByDomKey.delete(domKey);
+      runRedpen(resumableItem, block);
+    }
   }
 }
 
 function rememberFeedback(domKey, response) {
-  if (!domKey) return;
+  if (!domKey) return false;
   feedbackByDomKey.delete(domKey);
   feedbackByDomKey.set(domKey, response);
   while (feedbackByDomKey.size > MAX_CACHED_FEEDBACK) {
@@ -559,7 +594,7 @@ function rememberFeedback(domKey, response) {
     feedbackByDomKey.delete(oldestKey);
     dismissedDomKeys.delete(oldestKey);
   }
-  persistFeedbackState();
+  return persistFeedbackState();
 }
 
 function loadPersistedFeedbackState() {
@@ -589,10 +624,26 @@ function loadPersistedFeedbackState() {
           (domKey) => typeof domKey === "string" && persistedKeys.has(domKey),
         )
       : [];
-    return { feedback, dismissed, retryable, inFlight };
+    const bridgeInstanceId =
+      typeof parsed.bridgeInstanceId === "string"
+        ? parsed.bridgeInstanceId
+        : null;
+    return { feedback, dismissed, retryable, inFlight, bridgeInstanceId };
   } catch (_error) {
-    return { feedback: [], dismissed: [], retryable: [], inFlight: [] };
+    return {
+      feedback: [],
+      dismissed: [],
+      retryable: [],
+      inFlight: [],
+      bridgeInstanceId: null,
+    };
   }
+}
+
+function withoutTransportId(item) {
+  const copy = { ...item };
+  delete copy.redpenRequestId;
+  return copy;
 }
 
 function loadPersistedRequests(value) {
@@ -615,23 +666,30 @@ function persistFeedbackState() {
       (domKey) =>
         feedbackByDomKey.has(domKey) ||
         retryableByDomKey.has(domKey) ||
-        inFlightByDomKey.has(domKey),
+        inFlightByDomKey.has(domKey) ||
+        resumableByDomKey.has(domKey),
     );
     localStorage.setItem(
       FEEDBACK_STORAGE_KEY,
       JSON.stringify({
+        bridgeInstanceId: bridge?.instanceId || null,
         feedback: Array.from(feedbackByDomKey),
         dismissed,
         retryable: Array.from(retryableByDomKey),
-        inFlight: Array.from(inFlightByDomKey, ([domKey, request]) => [
-          domKey,
-          request.item,
-        ]),
+        inFlight: [
+          ...Array.from(resumableByDomKey),
+          ...Array.from(inFlightByDomKey, ([domKey, request]) => [
+            domKey,
+            request.item,
+          ]),
+        ],
       }),
     );
+    return true;
   } catch (_error) {
     // Persistence is best-effort: feedback must continue to work when storage
     // is unavailable or the host application's quota is exhausted.
+    return false;
   }
 }
 
@@ -724,7 +782,12 @@ function attachFeedbackBlock(bubble, block) {
 
 async function runRedpen(item, block) {
   const domKey = block.dataset.domKey;
-  const request = { item };
+  const redpenRequestId =
+    item.redpenRequestId ||
+    bridge?.createRequestId?.() ||
+    `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  item.redpenRequestId = redpenRequestId;
+  const request = { item, redpenRequestId };
   if (domKey) {
     retryableByDomKey.delete(domKey);
     inFlightByDomKey.set(domKey, request);
@@ -741,17 +804,25 @@ async function runRedpen(item, block) {
     if (!bridge || typeof bridge.request !== "function") {
       throw new Error("redpen bridge is unavailable");
     }
-    const response = await bridge.request("/coach", {
-      prompt: item.coachPrompt,
-      requestId: item.id,
-    });
+    const response = await bridge.request(
+      "/coach",
+      {
+        prompt: item.coachPrompt,
+        requestId: item.id,
+      },
+      redpenRequestId,
+    );
     clearTimeout(loadingTimer);
     if (!response || response.status === "skipped") {
       if (domKey && inFlightByDomKey.get(domKey) === request) {
         inFlightByDomKey.delete(domKey);
       }
       if (domKey) retryableByDomKey.delete(domKey);
-      persistFeedbackState();
+      const feedbackPersisted = persistFeedbackState();
+      if (feedbackPersisted) {
+        bridge.ack?.(redpenRequestId);
+        delete item.redpenRequestId;
+      }
       for (const activeBlock of feedbackBlocksForDomKey(domKey, block)) {
         activeBlock.remove();
       }
@@ -763,7 +834,11 @@ async function runRedpen(item, block) {
     if (domKey && inFlightByDomKey.get(domKey) === request) {
       inFlightByDomKey.delete(domKey);
     }
-    rememberFeedback(domKey, response);
+    const feedbackPersisted = rememberFeedback(domKey, response);
+    if (feedbackPersisted) {
+      bridge.ack?.(redpenRequestId);
+      delete item.redpenRequestId;
+    }
     const activeBlocks = feedbackBlocksForDomKey(domKey, block);
     if (!activeBlocks.length) {
       scheduleScan();
@@ -781,8 +856,16 @@ async function runRedpen(item, block) {
     if (domKey && inFlightByDomKey.get(domKey) === request) {
       inFlightByDomKey.delete(domKey);
     }
+    const keepAttempt = error?.redpenPending === true;
+    const previousRequestId = item.redpenRequestId;
+    if (!keepAttempt) delete item.redpenRequestId;
     if (domKey) retryableByDomKey.set(domKey, item);
-    persistFeedbackState();
+    const feedbackPersisted = persistFeedbackState();
+    if (!keepAttempt && feedbackPersisted) {
+      bridge?.ack?.(redpenRequestId);
+    } else if (!keepAttempt) {
+      item.redpenRequestId = previousRequestId;
+    }
     const activeBlocks = feedbackBlocksForDomKey(domKey, block);
     if (!activeBlocks.length) {
       requeueDetachedItem(item, block);

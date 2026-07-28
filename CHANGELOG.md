@@ -5,6 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-07-28
+
+### Fixed
+
+- **Desktop checks no longer remain stuck on a half-alive CDP connection.**
+  Redpen now verifies the full binding round trip, reconnects an unhealthy
+  session, and replays each request with a stable ID without rerunning the
+  coach.
+- **In-flight feedback survives task switches and renderer replacement.**
+  Requests and completed results use a durable outbox/inbox handshake; closing
+  the app still converts unfinished checks into an explicit retry state on the
+  next launch.
+- **Duplicate submit events and nested copies of the same message no longer
+  start duplicate checks.**
+
 ## [0.4.3] - 2026-07-26
 
 ### Fixed
@@ -73,6 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`arm64` + `x86_64`) binary. The styled `.dmg` is built in CI with `dmgbuild`,
   so it generates reliably on headless macOS runners.
 
+[0.4.4]: https://github.com/12og3r/redpen/releases/tag/v0.4.4
 [0.4.3]: https://github.com/12og3r/redpen/releases/tag/v0.4.3
 [0.4.1]: https://github.com/12og3r/redpen/releases/tag/v0.4.1
 [0.4.0]: https://github.com/12og3r/redpen/releases/tag/v0.4.0
