@@ -3,10 +3,9 @@ window.__REDPEN_CHATGPT_APP_RENDERER__ = { version: "0.4.4" };
 
 const bridge = window.__REDPEN_CHATGPT_APP__;
 const pending = [];
-const recentCaptureAtByText = new Map();
 const seenDomKeys = new Set();
 const MAX_CACHED_FEEDBACK = 200;
-const CAPTURE_DEDUPE_MS = 10000;
+const CAPTURE_SETTLE_MS = 100;
 const FEEDBACK_STORAGE_KEY = "redpen.chatgpt-app.feedback.v1";
 const persistedFeedbackState = loadPersistedFeedbackState();
 const sameBridgeInstance = Boolean(
@@ -26,8 +25,11 @@ const retryableByDomKey = new Map(
       ),
 );
 const dismissedDomKeys = new Set(persistedFeedbackState.dismissed);
+const checkedLegacyDomKeys = new Set();
 let sequence = 0;
 let scanTimer = 0;
+let captureTimer = 0;
+let stagedCapture = null;
 
 const EDITOR_SELECTOR = [
   "textarea",
@@ -35,6 +37,8 @@ const EDITOR_SELECTOR = [
   '[contenteditable=""]',
   '[role="textbox"]',
 ].join(",");
+const USER_MESSAGE_GROUP_SELECTOR =
+  ".group.flex.w-full.flex-col.items-end.justify-end.gap-1";
 
 function startWhenReady() {
   if (!document.body) {
@@ -411,19 +415,48 @@ function captureSubmit() {
 
   const normalizedRaw = normalizeText(rawPrompt);
   const now = Date.now();
-  const lastCaptureAt = recentCaptureAtByText.get(normalizedRaw) || 0;
-  if (now - lastCaptureAt < CAPTURE_DEDUPE_MS) return;
-  recentCaptureAtByText.set(normalizedRaw, now);
-  for (const [text, capturedAt] of recentCaptureAtByText) {
-    if (now - capturedAt > 120000) recentCaptureAtByText.delete(text);
-  }
-
-  pending.push({
-    id: `${now}-${++sequence}`,
+  const capture = {
     rawPrompt,
     coachPrompt,
     normalizedRaw,
     at: now,
+  };
+  const mergedCapture = mergeSubmissionCapture(stagedCapture, capture);
+  if (mergedCapture) {
+    stagedCapture = mergedCapture;
+  } else {
+    flushStagedCapture();
+    stagedCapture = capture;
+  }
+  clearTimeout(captureTimer);
+  captureTimer = setTimeout(flushStagedCapture, CAPTURE_SETTLE_MS);
+}
+
+function mergeSubmissionCapture(current, candidate) {
+  if (
+    !current ||
+    candidate.at - current.at > CAPTURE_SETTLE_MS ||
+    !promptTextsAreVariants(current.normalizedRaw, candidate.normalizedRaw)
+  ) {
+    return null;
+  }
+  if (candidate.normalizedRaw.length <= current.normalizedRaw.length) {
+    return current;
+  }
+  return { ...candidate, at: current.at };
+}
+
+function flushStagedCapture() {
+  clearTimeout(captureTimer);
+  captureTimer = 0;
+  if (!stagedCapture) return;
+
+  const capture = stagedCapture;
+  stagedCapture = null;
+
+  pending.push({
+    id: `${capture.at}-${++sequence}`,
+    ...capture,
   });
   prunePending();
   scheduleScan();
@@ -482,27 +515,40 @@ function scheduleScan() {
 function scanForSubmittedMessages() {
   prunePending();
   const entries = userBubbleEntries();
+  migrateLegacyTimestampState(entries);
   restoreFeedback(entries);
   if (!pending.length) return;
 
-  for (const { bubble, text, domKey } of entries) {
-    if (seenDomKeys.has(domKey) || hasFeedbackForDomKey(bubble, domKey)) {
+  for (const { bubble, anchor, text, domKey } of orderEntriesForPending(entries)) {
+    if (seenDomKeys.has(domKey) || hasFeedbackForDomKey(anchor, domKey)) {
       continue;
     }
 
-    const idx = pending.findIndex((item) => promptMatchesBubble(item, text));
-    if (idx < 0) continue;
-
-    const item = pending.splice(idx, 1)[0];
+    const item = takePendingForBubble(text);
+    if (!item) continue;
     seenDomKeys.add(domKey);
     bubble.dataset.redpenChatgptAppProcessed = item.id;
 
     const block = baseBlock();
     block.hidden = true;
     block.dataset.domKey = domKey;
-    attachFeedbackBlock(bubble, block);
+    attachFeedbackBlock(bubble, anchor, block);
     runRedpen(item, block);
   }
+}
+
+function orderEntriesForPending(entries) {
+  const newestFirst = [...entries].reverse();
+  const exact = [];
+  const fallback = [];
+  for (const entry of newestFirst) {
+    if (pending.some((item) => item.normalizedRaw === entry.text)) {
+      exact.push(entry);
+    } else {
+      fallback.push(entry);
+    }
+  }
+  return [...exact, ...fallback];
 }
 
 function userBubbleEntries() {
@@ -510,30 +556,38 @@ function userBubbleEntries() {
   for (const bubble of userBubbles()) {
     const text = bubbleText(bubble);
     if (!text) continue;
-    const nestedIndex = unique.findIndex(
-      (entry) =>
-        entry.text === text &&
-        (entry.bubble.contains(bubble) || bubble.contains(entry.bubble)),
-    );
-    if (nestedIndex < 0) {
-      unique.push({ bubble, text });
-    } else if (unique[nestedIndex].bubble.contains(bubble)) {
-      unique[nestedIndex] = { bubble, text };
-    }
+    collapseUserBubbleCandidate(unique, bubble, text);
   }
 
   const counts = new Map();
   const entries = [];
+  const currentConversationKey = conversationKey();
   for (const { bubble, text } of unique) {
     const occurrence = (counts.get(text) || 0) + 1;
     counts.set(text, occurrence);
     entries.push({
       bubble,
+      anchor: feedbackAnchorForBubble(bubble),
+      conversationKey: currentConversationKey,
+      occurrence,
       text,
-      domKey: `${conversationKey()}|${hashText(text)}|${occurrence}`,
+      domKey: `${currentConversationKey}|${hashText(text)}|${occurrence}`,
     });
   }
   return entries;
+}
+
+function collapseUserBubbleCandidate(unique, bubble, text) {
+  const nestedIndex = unique.findIndex(
+    (entry) =>
+      entry.text === text &&
+      (entry.bubble.contains(bubble) || bubble.contains(entry.bubble)),
+  );
+  if (nestedIndex < 0) {
+    unique.push({ bubble, text });
+  } else if (unique[nestedIndex].bubble.contains(bubble)) {
+    unique[nestedIndex] = { bubble, text };
+  }
 }
 
 function conversationKey() {
@@ -546,13 +600,90 @@ function conversationKey() {
   return threadId || `${location.pathname}${location.search}${location.hash}`;
 }
 
-function restoreFeedback(entries) {
-  for (const { bubble, domKey } of entries) {
-    const response = feedbackByDomKey.get(domKey);
+function migrateLegacyTimestampState(entries) {
+  const persistedKeys = persistedDomKeys();
+  if (!persistedKeys.size) return;
+
+  let changed = false;
+  for (const entry of entries) {
     if (
-      dismissedDomKeys.has(domKey) ||
-      hasFeedbackForDomKey(bubble, domKey)
+      checkedLegacyDomKeys.has(entry.domKey) ||
+      persistedKeys.has(entry.domKey)
     ) {
+      continue;
+    }
+    const legacyDomKey = findLegacyDomKey(entry, persistedKeys);
+    if (!legacyDomKey) {
+      checkedLegacyDomKeys.add(entry.domKey);
+      continue;
+    }
+    if (inFlightByDomKey.has(legacyDomKey)) {
+      seenDomKeys.add(entry.domKey);
+      continue;
+    }
+    checkedLegacyDomKeys.add(entry.domKey);
+
+    for (const stateMap of [
+      feedbackByDomKey,
+      retryableByDomKey,
+      resumableByDomKey,
+    ]) {
+      if (!stateMap.has(legacyDomKey)) continue;
+      stateMap.set(entry.domKey, stateMap.get(legacyDomKey));
+      stateMap.delete(legacyDomKey);
+    }
+    if (dismissedDomKeys.delete(legacyDomKey)) {
+      dismissedDomKeys.add(entry.domKey);
+    }
+    for (const block of document.querySelectorAll?.(".redpen-feedback") || []) {
+      if (block.dataset.domKey === legacyDomKey) {
+        block.dataset.domKey = entry.domKey;
+      }
+    }
+    if (seenDomKeys.delete(legacyDomKey)) {
+      seenDomKeys.add(entry.domKey);
+    }
+    persistedKeys.delete(legacyDomKey);
+    persistedKeys.add(entry.domKey);
+    changed = true;
+  }
+  if (changed) persistFeedbackState();
+}
+
+function persistedDomKeys() {
+  return new Set([
+    ...feedbackByDomKey.keys(),
+    ...retryableByDomKey.keys(),
+    ...inFlightByDomKey.keys(),
+    ...resumableByDomKey.keys(),
+  ]);
+}
+
+function findLegacyDomKey(entry, persistedKeys) {
+  const occurrences =
+    entry.occurrence === 1 ? [1] : [1, entry.occurrence];
+  const legacyTexts =
+    entry.legacyTexts || legacyBubbleTexts(entry.bubble, entry.text);
+  for (const legacyText of legacyTexts) {
+    const hash = hashText(legacyText);
+    for (const occurrence of occurrences) {
+      const candidate =
+        `${entry.conversationKey}|${hash}|${occurrence}`;
+      if (persistedKeys.has(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
+function restoreFeedback(entries) {
+  for (const { bubble, anchor, domKey } of entries) {
+    const response = feedbackByDomKey.get(domKey);
+    if (dismissedDomKeys.has(domKey)) {
+      seenDomKeys.add(domKey);
+      continue;
+    }
+    if (hasFeedbackForDomKey(anchor, domKey)) {
+      seenDomKeys.add(domKey);
       continue;
     }
     const inFlight = inFlightByDomKey.has(domKey);
@@ -576,7 +707,7 @@ function restoreFeedback(entries) {
     } else {
       renderLoadingBlock(block);
     }
-    attachFeedbackBlock(bubble, block);
+    attachFeedbackBlock(bubble, anchor, block);
     seenDomKeys.add(domKey);
     if (resumableItem) {
       resumableByDomKey.delete(domKey);
@@ -707,6 +838,7 @@ function userBubbles() {
   const result = [];
   const seen = new Set();
   const push = (element) => {
+    element = canonicalUserBubbleElement(element);
     if (!element || seen.has(element) || !element.isConnected) return;
     if (element.closest && element.closest(".redpen-feedback")) return;
     seen.add(element);
@@ -717,6 +849,7 @@ function userBubbles() {
     .querySelectorAll(
       [
         '[data-message-author-role="user"]',
+        '[data-user-message-bubble="true"]',
         '[data-testid*="user"]',
         '[class*="user-message"]',
         '[class*="UserMessage"]',
@@ -725,21 +858,56 @@ function userBubbles() {
     .forEach(push);
 
   root
-    .querySelectorAll(".group.flex.w-full.flex-col.items-end.justify-end.gap-1")
+    .querySelectorAll(USER_MESSAGE_GROUP_SELECTOR)
     .forEach((group) => {
-      Array.from(group.children).forEach((child) => {
-        const className = String(child.className || "");
-        if (
-          className.includes("bg-token-foreground/5") ||
-          className.includes("rounded")
-        ) {
-          push(child);
-        }
-      });
-      push(group);
+      userMessageCandidatesForGroup(group).forEach(push);
     });
 
   return result.filter(isVisible).slice(-24);
+}
+
+function canonicalUserBubbleElement(element) {
+  if (element?.matches?.('[data-user-message-bubble="true"]')) {
+    return element;
+  }
+  return (
+    element?.querySelector?.('[data-user-message-bubble="true"]') ||
+    element?.closest?.('[data-user-message-bubble="true"]') ||
+    element
+  );
+}
+
+function isLikelyUserMessageChild(element) {
+  const className = String(element?.className || "");
+  return Boolean(
+    element?.matches?.('[data-user-message-bubble="true"]') ||
+      className.includes("bg-token-foreground/5") ||
+      className.includes("rounded"),
+  );
+}
+
+function userMessageCandidatesForGroup(group) {
+  const stableBubble = group.querySelector?.(
+    '[data-user-message-bubble="true"]',
+  );
+  if (stableBubble) return [stableBubble];
+  const messageChildren = Array.from(group.children).filter(
+    isLikelyUserMessageChild,
+  );
+  return messageChildren.length ? messageChildren : [group];
+}
+
+function feedbackAnchorForBubble(bubble) {
+  const group = bubble.closest?.(USER_MESSAGE_GROUP_SELECTOR);
+  if (group && bubble.parentElement !== group) return group;
+  return bubble;
+}
+
+function legacyBubbleTexts(bubble, text) {
+  const group = bubble.closest?.(USER_MESSAGE_GROUP_SELECTOR);
+  if (!group || group === bubble) return [];
+  const legacyText = bubbleText(group);
+  return legacyText && legacyText !== text ? [legacyText] : [];
 }
 
 function bubbleText(element) {
@@ -754,20 +922,42 @@ function bubbleText(element) {
 
 function promptMatchesBubble(item, text) {
   if (text === item.normalizedRaw) return true;
-  if (text.includes(item.normalizedRaw)) return true;
-  if (item.normalizedRaw.includes(text) && text.length > 12) return true;
+  if (text.startsWith(item.normalizedRaw)) return true;
   return false;
 }
 
-function hasFeedbackForDomKey(bubble, domKey) {
-  const parent = bubble.parentElement;
+function promptTextsAreVariants(left, right) {
+  if (!left || !right) return false;
+  return left.startsWith(right) || right.startsWith(left);
+}
+
+function takePendingForBubble(text) {
+  const matches = pending
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => promptMatchesBubble(item, text));
+  if (!matches.length) return null;
+
+  matches.sort((left, right) => {
+    const exactDifference =
+      Number(right.item.normalizedRaw === text) -
+      Number(left.item.normalizedRaw === text);
+    if (exactDifference) return exactDifference;
+    return right.item.normalizedRaw.length - left.item.normalizedRaw.length;
+  });
+  const [{ item, index }] = matches;
+  pending.splice(index, 1);
+  return item;
+}
+
+function hasFeedbackForDomKey(anchor, domKey) {
+  const parent = anchor.parentElement;
   if (!parent) return false;
   return Array.from(parent.querySelectorAll(".redpen-feedback")).some(
     (element) => element.dataset.domKey === domKey,
   );
 }
 
-function attachFeedbackBlock(bubble, block) {
+function attachFeedbackBlock(bubble, anchor, block) {
   const bubbleWidth = Math.round(bubble.getBoundingClientRect().width);
   if (bubbleWidth > 0) {
     block.style.setProperty("--redpen-anchor-width", `${bubbleWidth}px`);
@@ -777,7 +967,7 @@ function attachFeedbackBlock(bubble, block) {
   )
     ? "dark"
     : "light";
-  bubble.insertAdjacentElement("afterend", block);
+  anchor.insertAdjacentElement("afterend", block);
 }
 
 async function runRedpen(item, block) {

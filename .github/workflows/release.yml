@@ -38,6 +38,7 @@ jobs:
       - name: Verify renderer JavaScript
         run: |
           node -e 'const fs = require("fs"); new Function(fs.readFileSync("assets/chatgpt-app/renderer-inject.js", "utf8"));'
+          node --test tests/renderer-inject.test.mjs
 
       - name: Run Rust tests
         run: cargo test --workspace --locked
