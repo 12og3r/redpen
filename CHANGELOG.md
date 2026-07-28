@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.4] - 2026-07-28
 
+### Changed
+
+- **Codex coaching now uses a speed-first model fallback chain.** Requests use
+  `gpt-5.6-luna` in Fast mode by default, retry with `gpt-5.6-terra` in Fast
+  mode on failure, and finally fall back to `gpt-5.4-mini` in Standard mode.
+
 ### Fixed
 
 - **Desktop checks no longer remain stuck on a half-alive CDP connection.**

@@ -125,7 +125,8 @@ LANGUAGE="english"
 SHOW_HINT="on"
 # shellcheck disable=SC1090
 [[ -r "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
-MODEL="gpt-5.4-mini"
+MODELS=("gpt-5.6-luna" "gpt-5.6-terra" "gpt-5.4-mini")
+FAST_MODES=(1 1 0)
 SHOW_HINT="$(printf '%s' "$SHOW_HINT" | tr 'A-Z' 'a-z')"
 case "$SHOW_HINT" in off|false|0|no) SHOW_HINT="off" ;; *) SHOW_HINT="on" ;; esac
 LANGUAGE="$(printf '%s' "$LANGUAGE" | tr 'A-Z' 'a-z')"
@@ -139,7 +140,7 @@ case "$LANGUAGE" in
     LANGUAGE="english"
     ;;
 esac
-log "language=$LANGUAGE model=${MODEL:-<follow codex default>}"
+log "language=$LANGUAGE model_chain=${MODELS[*]}"
 
 MAX_PROMPT_CHARS="${MAX_PROMPT_CHARS:-2000}"
 if (( ${#PROMPT} > MAX_PROMPT_CHARS )); then
@@ -201,46 +202,78 @@ for candidate in "${TMPDIR:-}" /tmp "$HOME"; do
 done
 log "clean_cwd=${CLEAN_CWD:-<none, using current>}"
 
-ARGS=(exec)
-[[ -n "${MODEL:-}" ]] && ARGS+=(--model "$MODEL")
-ARGS+=(
-  --ephemeral
-  --ignore-user-config
-  --ignore-rules
-  --skip-git-repo-check
-  --sandbox read-only
-  -c model_reasoning_effort=low
-  "$PROMPT_FOR_CODEX"
-)
-
 CODEX_STDERR_FILE="$(mktemp "${TMPDIR:-/tmp}/redpen-codex-stderr.XXXXXX")" \
   || { log "fatal: cannot create temporary stderr file"; exit 0; }
 trap 'rm -f "$CODEX_STDERR_FILE"' EXIT
 
-REWRITTEN="$(
-  if [[ -n "$CLEAN_CWD" ]]; then cd "$CLEAN_CWD"; fi
-  REDPEN_ACTIVE=1 \
-    "$CODEX_BIN" "${ARGS[@]}" </dev/null 2>"$CODEX_STDERR_FILE"
-)"
-CODEX_STATUS=$?
-CODEX_STDERR="$(head -c 600 "$CODEX_STDERR_FILE" | tr '\r\n' '  ')"
+run_codex_model() {
+  local model="$1"
+  local fast_mode="$2"
+  local status
+  local -a args
+
+  args=(
+    exec
+    --model "$model"
+    --ephemeral
+    --ignore-user-config
+    --ignore-rules
+    --skip-git-repo-check
+    --sandbox read-only
+    -c model_reasoning_effort=low
+  )
+  if [[ "$fast_mode" == "1" ]]; then
+    args+=(
+      -c 'service_tier="fast"'
+      -c features.fast_mode=true
+    )
+  fi
+  args+=("$PROMPT_FOR_CODEX")
+
+  : > "$CODEX_STDERR_FILE"
+  ATTEMPT_OUTPUT="$(
+    if [[ -n "$CLEAN_CWD" ]]; then cd "$CLEAN_CWD"; fi
+    REDPEN_ACTIVE=1 \
+      "$CODEX_BIN" "${args[@]}" </dev/null 2>"$CODEX_STDERR_FILE"
+  )"
+  status=$?
+  ATTEMPT_STDERR="$(head -c 600 "$CODEX_STDERR_FILE" | tr '\r\n' '  ')"
+
+  if (( status != 0 )); then
+    log "model failed model=$model fast=$fast_mode status=$status stderr=${ATTEMPT_STDERR:-<empty>}"
+    return 1
+  fi
+
+  ATTEMPT_OUTPUT="${ATTEMPT_OUTPUT#"${ATTEMPT_OUTPUT%%[![:space:]]*}"}"
+  ATTEMPT_OUTPUT="${ATTEMPT_OUTPUT%"${ATTEMPT_OUTPUT##*[![:space:]]}"}"
+  if [[ -z "$ATTEMPT_OUTPUT" ]]; then
+    log "model returned empty output model=$model fast=$fast_mode stderr=${ATTEMPT_STDERR:-<empty>}"
+    return 1
+  fi
+
+  return 0
+}
+
+REWRITTEN=""
+SELECTED_MODEL=""
+for model_index in "${!MODELS[@]}"; do
+  if run_codex_model "${MODELS[$model_index]}" "${FAST_MODES[$model_index]}"; then
+    REWRITTEN="$ATTEMPT_OUTPUT"
+    SELECTED_MODEL="${MODELS[$model_index]}"
+    log "model selected model=$SELECTED_MODEL fast=${FAST_MODES[$model_index]}"
+    break
+  fi
+done
+
 rm -f "$CODEX_STDERR_FILE"
 trap - EXIT
 
-if (( CODEX_STATUS != 0 )); then
-  log "skip: codex CLI failed status=$CODEX_STATUS stderr=${CODEX_STDERR:-<empty>}"
+if [[ -z "$REWRITTEN" ]]; then
+  log "skip: all codex model attempts failed"
   exit 0
 fi
-
-REWRITTEN="${REWRITTEN#"${REWRITTEN%%[![:space:]]*}"}"
-REWRITTEN="${REWRITTEN%"${REWRITTEN##*[![:space:]]}"}"
 
 log "rewrite[0..120]=$(printf '%s' "$REWRITTEN" | head -c 120)"
-
-if [[ -z "$REWRITTEN" ]]; then
-  log "skip: empty rewrite stderr=${CODEX_STDERR:-<empty>}"
-  exit 0
-fi
 
 if [[ "${REDPEN_OUTPUT:-}" == "structured" ]]; then
   OUTPUT_JSON="$(REWRITTEN="$REWRITTEN" ORIGINAL_PROMPT="$PROMPT" LT_LANGUAGE="$LANGUAGE" \

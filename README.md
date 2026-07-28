@@ -80,7 +80,7 @@ constraints:
 | | Claude Code (`redpen`) | Codex CLI (`redpen-codex`) |
 |---|---|---|
 | Config | `~/.claude/redpen.config` | `~/.codex/redpen.config` |
-| Default model | `haiku` (alias), user-configurable via `/redpen:setup` | `gpt-5.4-mini`, **locked in v0.3.0** (only model that works on ChatGPT-account Codex auth — edit `plugins/redpen-codex/hooks/grammar_check.sh` to override) |
+| Default model | `haiku` (alias), user-configurable via `/redpen:setup` | `gpt-5.6-luna` Fast, with automatic fallback to `gpt-5.6-terra` Fast and then `gpt-5.4-mini` Standard |
 | Setup invoke | `/redpen:setup` | `$redpen-setup` (Codex skill — TUI only) |
 | Hook target | `claude -p` | `codex exec` |
 | Output layout | multi-line (score / divider / native style) | visually 3 rows (score / divider / native style), same divider label as Claude Code — Codex's `systemMessage` channel is a single-string toast that strips all newlines, so the plugin pads each section to the terminal column boundary and relies on natural terminal wrap for the row breaks |
@@ -209,10 +209,9 @@ The skill walks two numbered questions:
 | Language | `English` · `中文 (Chinese)` · `Español (Spanish)` · `日本語 (Japanese)` |
 | Native style line | `On` (default, recommended) · `Off` |
 
-The chosen values are written to `~/.codex/redpen.config`. (Model is
-locked to `gpt-5.4-mini` in v0.3.0, so the skill doesn't ask about it —
-see [Codex CLI — known limitations](#codex-cli--known-limitations) for
-how to override.)
+The chosen values are written to `~/.codex/redpen.config`. The skill doesn't
+ask about the model because the runner automatically selects the fastest
+available option from its fallback chain.
 
 You can also edit `~/.codex/redpen.config` by hand (just 2 lines — see
 the example in [plugins/redpen-codex/skills/setup/SKILL.md](plugins/redpen-codex/skills/setup/SKILL.md));
@@ -229,34 +228,31 @@ there.
   the terminal column boundary, letting natural terminal wrap create the
   visual row breaks. The visual result is the same 3-row layout as Claude
   Code; the divider label (`──── Native style ────` etc.) is identical.
-- **Model is locked to `gpt-5.4-mini` in v0.3.0.** Empirically, it's the
-  only model that works on the default ChatGPT-account Codex auth —
-  `gpt-4o-mini` / `gpt-5-mini` / `gpt-5` / `gpt-5-codex` all return
-  `model not supported`. The `redpen-setup` skill therefore doesn't ask
-  about model. To override (e.g. when running with `OPENAI_API_KEY`),
-  edit the `MODEL=` line in
-  `plugins/redpen-codex/hooks/grammar_check.sh` directly.
+- **Models use an automatic speed-first fallback chain.** Redpen first tries
+  `gpt-5.6-luna` with Fast mode. If that request fails or returns no output,
+  it retries with `gpt-5.6-terra` in Fast mode, then falls back to
+  `gpt-5.4-mini` in Standard mode.
 - **Skills are TUI-only.** The `$redpen-setup` skill only fires inside the
   interactive Codex TUI. In `codex exec` non-interactive mode the skill
   invocation does nothing; users on that path should edit
   `~/.codex/redpen.config` by hand instead.
 - **No `--no-tools` analog in `codex exec`** — tool definitions still
   inflate the prompt context (~5–7k tokens observed) vs. the Claude Code
-  version. Latency and cost are higher per coach turn. Stick with
-  `gpt-5.4-mini` (the default) if you care about cost.
+  version. Latency and cost are higher per coach turn.
 - **`codex exec` flag stack is empirical**. We use `--ephemeral`,
   `--ignore-user-config`, `--ignore-rules`, `--skip-git-repo-check`,
   `--sandbox read-only`, `-c model_reasoning_effort=low`. The combination
   works on Codex 0.133.0 + ChatGPT-account auth (verified end-to-end
   manually). If something is slow on your machine, file an issue with
   timings.
-- **Latency floor is ~5s per coach turn.** Empirically measured on
-  Codex 0.133.0 + ChatGPT-account auth + gpt-5.4-mini. Breakdown: codex
-  CLI startup ~50ms, the rest is OpenAI network + model inference and
+- **Latency depends primarily on the model round trip.** The fallback chain
+  prefers Fast-mode GPT-5.6 models before trying `gpt-5.4-mini`. Codex
+  CLI startup is ~50ms; the rest is OpenAI network + model inference and
   is per-call. There's nothing to prewarm here — `codex exec` doesn't
   have CLI-level overhead to amortize (and neither does the Claude Code
   binary anymore: it ships as a native executable, so the per-call cost
-  is the model round-trip, not CLI startup). `-c model_reasoning_effort=minimal` is faster (~3s) but
+  is the model round-trip, not CLI startup). `-c model_reasoning_effort=minimal`
+  is faster but
   produces empty output (verified — model refuses to generate at that
   effort level), so unusable. Routes for faster turnaround if you need
   it: switch to `OPENAI_API_KEY` auth + direct API call (bypass the

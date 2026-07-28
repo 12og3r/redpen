@@ -1,7 +1,7 @@
 {
   "name": "redpen-codex",
   "description": "A private language coach for ChatGPT desktop and Codex that scores prompts, highlights corrections, and suggests native phrasing without changing the original prompt.",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "author": {
     "name": "roger.kwan",
     "url": "https://github.com/12og3r"
