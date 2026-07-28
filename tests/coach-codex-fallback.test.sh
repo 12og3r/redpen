@@ -106,6 +106,7 @@ message = json.loads(os.environ["HOOK_JSON"])["systemMessage"]
 prefix = "\r\x1b[2K"
 assert message.startswith(prefix), repr(message[:20])
 assert message[len(prefix)] != "\n", repr(message[:20])
+assert message[len(prefix)] != " ", repr(message[:20])
 '
 
 printf 'coach model fallback tests passed\n'

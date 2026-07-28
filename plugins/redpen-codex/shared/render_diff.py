@@ -271,9 +271,10 @@ if m:
             # layout — body / divider / native style — by padding each
             # segment to end-of-row, letting natural terminal wrap break
             # to the next visual row. The `warning:` prefix is wiped via
-            # `\r\033[2K` at print time (see end of file), so each row
-            # carries a 2-space left indent we manage ourselves.
-            INDENT_COLS = 2
+            # `\r\033[2K` at print time (see end of file). Do not add our
+            # own left indent: Codex already controls the message margin, and
+            # extra padding here makes the score line appear doubly indented.
+            INDENT_COLS = 0
             INDENT = " " * INDENT_COLS
             term_cols = terminal_width()
 
